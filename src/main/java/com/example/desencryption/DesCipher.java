@@ -95,4 +95,8 @@ public class DesCipher {
 
         return finalPermutation(outBlock);
     }
+
+    /*public String decrypt(String cipherBlock64, String[] roundKeys) {
+        return cipher(cipherBlock64, roundKeys);
+    }*/
 }
