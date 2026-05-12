@@ -19,48 +19,6 @@ import java.math.BigInteger;
 public class KeyUtil {
 
     /**
-     * PC-1 table.
-     *
-     * This table removes the parity bits from the original 64-bit key
-     * and permutes the remaining bits to produce a 56-bit key.
-     */
-    private final int[] pc1 = {
-            57, 49, 41, 33, 25, 17, 9, 1,
-            58, 50, 42, 34, 26, 18, 10, 2,
-            59, 51, 43, 35, 27, 19, 11, 3,
-            60, 52, 44, 36, 63, 55, 47, 39,
-            31, 23, 15, 7, 62, 54, 46, 38,
-            30, 22, 14, 6, 61, 53, 45, 37,
-            29, 21, 13, 5, 28, 20, 12, 4
-    };
-
-    /**
-     * PC-2 table.
-     *
-     * This table compresses and permutes each shifted 56-bit key
-     * into a 48-bit round key.
-     */
-    private final int[] pc2 = {
-            14, 17, 11, 24, 1, 5, 3, 28,
-            15, 6, 21, 10, 23, 19, 12, 4,
-            26, 8, 16, 7, 27, 20, 13, 2,
-            41, 52, 31, 37, 47, 55, 30, 40,
-            51, 45, 33, 48, 44, 49, 39, 56,
-            34, 53, 46, 42, 50, 36, 29, 32
-    };
-
-    /**
-     * Number of left shifts applied to the key halves in each DES round.
-     *
-     * Rounds 1, 2, 9, and 16 use one left shift.
-     * All other rounds use two left shifts.
-     */
-    private final int[] roundShifts = {
-            1, 1, 2, 2, 2, 2, 2, 2,
-            1, 2, 2, 2, 2, 2, 2, 1
-    };
-
-    /**
      * Stores the generated round keys.
      *
      * During keySchedule2(), this array temporarily stores the 56-bit shifted keys.
@@ -100,8 +58,8 @@ public class KeyUtil {
          * DES tables are 1-based, while Java strings are 0-based.
          * That is why we use pos - 1.
          */
-        for (int i = 0; i < pc1.length; i++) {
-            int pos = pc1[i];
+        for (int i = 0; i < PermutationTables.PC1.length; i++) {
+            int pos = PermutationTables.PC1[i];
             pc1Key.append(binary.charAt(pos - 1));
         }
 
@@ -137,7 +95,7 @@ public class KeyUtil {
          * Generate C1,D1 through C16,D16 by shifting both halves.
          */
         for (int i = 0; i < 16; i++) {
-            int shift = roundShifts[i];
+            int shift = PermutationTables.ROUND_SHIFTS[i];
 
             if (shift == 1) {
                 /*
@@ -203,8 +161,8 @@ public class KeyUtil {
              *
              * This compresses the 56-bit shifted key into a 48-bit round key.
              */
-            for (int j = 0; j < pc2.length; j++) {
-                int pos = pc2[j];
+            for (int j = 0; j < PermutationTables.PC2.length; j++) {
+                int pos = PermutationTables.PC2[j];
                 newKey.append(keys[i].charAt(pos - 1));
             }
 
