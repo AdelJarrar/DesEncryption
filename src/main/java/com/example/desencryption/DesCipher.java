@@ -96,7 +96,29 @@ public class DesCipher {
         return finalPermutation(outBlock);
     }
 
-    /*public String decrypt(String cipherBlock64, String[] roundKeys) {
-        return cipher(cipherBlock64, roundKeys);
-    }*/
+    public String decrypt(String cipherBlock64, String[] reversedRoundKeys) {
+        return cipher(cipherBlock64, reversedRoundKeys);
+    }
+
+    public String encryptBlock(String plainHex, String keyHex) {
+        String plainBlock64 = BitUtil.hexToBinary(plainHex, 64);
+
+        KeyUtil keyUtil = new KeyUtil();
+        String[] roundKeys = keyUtil.generateRoundKeys(keyHex);
+
+        String cipherBlock64 = cipher(plainBlock64, roundKeys);
+
+        return BitUtil.binaryToHex(cipherBlock64);
+    }
+
+    public String decryptBlock(String cipherHex, String keyHex) {
+        String cipherBlock64 = BitUtil.hexToBinary(cipherHex, 64);
+
+        KeyUtil keyUtil = new KeyUtil();
+        String[] reversedRoundKeys = keyUtil.generateReversedRoundKeys(keyHex);
+
+        String plainBlock64 = decrypt(cipherBlock64, reversedRoundKeys);
+
+        return BitUtil.binaryToHex(plainBlock64);
+    }
 }

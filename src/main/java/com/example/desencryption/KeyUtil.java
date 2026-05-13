@@ -27,6 +27,14 @@ public class KeyUtil {
     public String[] roundKeys = new String[16];
 
     /**
+     * Stores the generated round keys in reverse order.
+     *
+     * DES decryption uses the same cipher process as encryption, but applies
+     * the sixteen round keys from K16 down to K1.
+     */
+    public String[] reversedRoundKeys = new String[16];
+
+    /**
      * First step of the DES key schedule.
      *
      * Converts the original 16-character hexadecimal key into a 64-bit binary string,
@@ -168,9 +176,12 @@ public class KeyUtil {
 
             /*
              * Replace the temporary 56-bit shifted key with
-             * the final 48-bit round key.
+             * the final 48-bit round key, and store the same key in reverse
+             * order for decryption.
              */
-            roundKeys[i] = newKey.toString();
+            String finalRoundKey = newKey.toString();
+            roundKeys[i] = finalRoundKey;
+            reversedRoundKeys[15 - i] = finalRoundKey;
         }
     }
 
@@ -192,6 +203,23 @@ public class KeyUtil {
         secondKeySchedule(roundKeys);
 
         return roundKeys;
+    }
+
+    /**
+     * Generates all sixteen DES round keys in reverse order.
+     *
+     * This method runs the same key schedule as generateRoundKeys(), but
+     * returns the keys ordered from K16 down to K1 for decryption.
+     *
+     * @param key the original DES key in hexadecimal format
+     * @return an array containing sixteen 48-bit round keys in reverse order
+     */
+    public String[] generateReversedRoundKeys(String key) {
+        String pc1Key = KeySchedule1(key);
+        keySchedule2(pc1Key);
+        secondKeySchedule(roundKeys);
+
+        return reversedRoundKeys;
     }
 
     /**
