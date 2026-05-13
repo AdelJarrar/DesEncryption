@@ -12,7 +12,8 @@ import java.nio.file.Files;
  *
  * <p>This class does not encrypt or decrypt data. It only lets the user choose
  * files with JavaFX dialogs and converts selected files to raw byte arrays that
- * can be passed to {@link DesDataService}.</p>
+ * can be passed to {@link DesDataService}. Text files, images, audio, and video
+ * are all read the same way: as bytes.</p>
  */
 public class FileHnadler {
 
@@ -25,6 +26,8 @@ public class FileHnadler {
     public File chooseTextFile(Window owner) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Choose Text File");
+
+        // Filters make the dialog easier to use, but the file is still read as bytes.
         fileChooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("Text Files", "*.txt")
         );
@@ -43,6 +46,8 @@ public class FileHnadler {
     public File chooseMediaFile(Window owner) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Choose Image, Audio, or Video File");
+
+        // These are common formats for this project. All Files is still available below.
         fileChooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter(
                         "Media Files",
@@ -64,6 +69,8 @@ public class FileHnadler {
     public File chooseEncryptedFile(Window owner) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Choose Encrypted File");
+
+        // Encrypted files are suggested as .des, but All Files helps if the user renamed it.
         fileChooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("DES Encrypted Files", "*.des")
         );
@@ -83,7 +90,11 @@ public class FileHnadler {
     public File chooseSaveFile(Window owner, String defaultName) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Save Result");
-        fileChooser.setInitialFileName(defaultName);
+
+        if (defaultName != null && !defaultName.isBlank()) {
+            fileChooser.setInitialFileName(defaultName);
+        }
+
         return fileChooser.showSaveDialog(owner);
     }
 
@@ -100,6 +111,7 @@ public class FileHnadler {
             throw new IllegalArgumentException("File must not be null.");
         }
 
+        // Raw bytes work for every file type: text, images, audio, and video.
         return Files.readAllBytes(file.toPath());
     }
 
@@ -119,6 +131,7 @@ public class FileHnadler {
             throw new IllegalArgumentException("Data must not be null.");
         }
 
+        // Write the exact bytes produced by encryption/decryption.
         Files.write(file.toPath(), data);
     }
 }

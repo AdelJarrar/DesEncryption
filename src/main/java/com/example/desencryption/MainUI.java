@@ -13,6 +13,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Main JavaFX screen for the DES application.
+ *
+ * <p>This class is responsible for user interaction only: selecting files,
+ * reading key/text input, calling the DES services, and showing status
+ * messages. The actual encryption logic stays in {@link DesDataService}.</p>
+ */
 public class MainUI  extends BorderPane {
 
     private final FileHnadler fileHnadler = new FileHnadler();
@@ -31,16 +38,16 @@ public class MainUI  extends BorderPane {
         Label titleLabel = new Label("Des Encryption");
         titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
-        Label inputLabel = new Label("Enter text:");
+        Label inputLabel = new Label("Enter text or choose a file:");
         textField = new TextField();
-        textField.setPromptText("Enter text here...");
+        textField.setPromptText("Type text here, or load a file to show its path...");
 
         Label keyLabel = new Label("Enter Key:");
         keyField = new TextField();
-        keyField.setPromptText("Enter key here...");
+        keyField.setPromptText("16 hex characters, for example 133457799BBCDFF1");
 
 
-        Button runTest = new Button("Read Image, Audio, Video");
+        Button loadMediaButton = new Button("Load Image, Audio, Video");
         Button encryptButton = new Button("Encrypt");
         Button decryptButton = new Button("Decrypt");
         Button loadTextButton = new Button("Load Text");
@@ -55,7 +62,7 @@ public class MainUI  extends BorderPane {
         resultArea.setPrefHeight(500);
 
         loadTextButton.setOnAction(event -> loadTextFile());
-        runTest.setOnAction(event -> loadMediaFile());
+        loadMediaButton.setOnAction(event -> loadMediaFile());
         loadKeyButton.setOnAction(event -> loadKeyFile());
         encryptButton.setOnAction(event -> encryptCurrentInput());
         decryptButton.setOnAction(event -> decryptSelectedFile());
@@ -63,7 +70,7 @@ public class MainUI  extends BorderPane {
 
         HBox buttonBox = new HBox(10);
         buttonBox.getChildren().addAll(
-                encryptButton, decryptButton, runTest,
+                encryptButton, decryptButton, loadMediaButton,
                 loadTextButton, loadKeyButton, saveResultButton
         );
 
@@ -82,6 +89,9 @@ public class MainUI  extends BorderPane {
         setCenter(vBox);
     }
 
+    /**
+     * Lets the user choose a text file, stores its bytes, and previews the text.
+     */
     private void loadTextFile() {
         File file = fileHnadler.chooseTextFile(getSceneWindow());
         if (file == null) {
@@ -92,12 +102,25 @@ public class MainUI  extends BorderPane {
             selectedFile = file;
             selectedFileBytes = fileHnadler.readFileBytes(file);
             textField.setText(file.getAbsolutePath());
-            resultArea.setText(new String(selectedFileBytes, StandardCharsets.UTF_8));
+            resultArea.setText(
+                    "Loaded text file: " + file.getAbsolutePath()
+                            + System.lineSeparator()
+                            + "Encrypt will use this file's bytes."
+                            + System.lineSeparator()
+                            + System.lineSeparator()
+                            + new String(selectedFileBytes, StandardCharsets.UTF_8)
+            );
         } catch (IOException | IllegalArgumentException ex) {
             showError("Could not load text file", ex);
         }
     }
 
+    /**
+     * Lets the user choose a media file and stores the raw bytes.
+     *
+     * <p>Images, audio, and video are binary data, so the UI shows only the
+     * file path and size instead of printing the raw bytes.</p>
+     */
     private void loadMediaFile() {
         File file = fileHnadler.chooseMediaFile(getSceneWindow());
         if (file == null) {
@@ -113,6 +136,8 @@ public class MainUI  extends BorderPane {
                             + System.lineSeparator()
                             + "Size: " + selectedFileBytes.length + " bytes"
                             + System.lineSeparator()
+                            + "Encrypt will use this file's bytes."
+                            + System.lineSeparator()
                             + "Binary file contents are not displayed here."
             );
         } catch (IOException | IllegalArgumentException ex) {
@@ -120,6 +145,12 @@ public class MainUI  extends BorderPane {
         }
     }
 
+    /**
+     * Loads a DES key from a small text file.
+     *
+     * <p>The file should contain one key such as 133457799BBCDFF1. Whitespace
+     * before or after the key is ignored.</p>
+     */
     private void loadKeyFile() {
         File file = fileHnadler.chooseTextFile(getSceneWindow());
         if (file == null) {
@@ -136,6 +167,9 @@ public class MainUI  extends BorderPane {
         }
     }
 
+    /**
+     * Encrypts the currently selected file bytes, or typed text if no file is selected.
+     */
     private void encryptCurrentInput() {
         try {
             String keyHex = keyField.getText().trim();
@@ -169,6 +203,9 @@ public class MainUI  extends BorderPane {
         }
     }
 
+    /**
+     * Chooses an encrypted file, decrypts it, and asks where to save the result.
+     */
     private void decryptSelectedFile() {
         File encryptedFile = fileHnadler.chooseEncryptedFile(getSceneWindow());
         if (encryptedFile == null) {
@@ -207,6 +244,9 @@ public class MainUI  extends BorderPane {
         }
     }
 
+    /**
+     * Saves the most recent encrypted or decrypted bytes again.
+     */
     private void saveLastOutput() {
         if (lastOutputBytes == null) {
             resultArea.setText("There is no encrypted or decrypted result to save yet.");
@@ -226,6 +266,12 @@ public class MainUI  extends BorderPane {
         }
     }
 
+    /**
+     * Chooses what Encrypt should process.
+     *
+     * <p>If a file was loaded, encryption uses the file bytes. Otherwise, it
+     * uses the text typed directly in the input field.</p>
+     */
     private byte[] getBytesToEncrypt() {
         if (selectedFileBytes != null) {
             return selectedFileBytes;
