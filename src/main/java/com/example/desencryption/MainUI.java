@@ -28,9 +28,13 @@ public class MainUI  extends BorderPane {
 
     private final FileHnadler fileHnadler = new FileHnadler();
     private final DesDataService desDataService = new DesDataService();
+    private final SmsService smsService = new SmsService();
+    private final EmailService emailService = new EmailService();
 
     private TextField textField;
     private TextField keyField;
+    private TextField phoneField;
+    private TextField emailField;
     private TextArea resultArea;
 
     /*
@@ -48,6 +52,15 @@ public class MainUI  extends BorderPane {
      */
     private byte[] lastOutputBytes;
     private String lastOutputSuggestedName;
+
+    /*
+     * Email should send encrypted output only, not decrypted plaintext.
+     * These fields remember the latest encryption result separately.
+     */
+    private byte[] lastEncryptedBytes;
+    private String lastEncryptedTextHex;
+    private String lastEncryptedSuggestedName;
+    private boolean lastEncryptedOutputIsText;
 
     /**
      * Builds the whole UI screen in Java code.
@@ -67,6 +80,13 @@ public class MainUI  extends BorderPane {
         keyField = new TextField();
         keyField.setPromptText("16 hex characters, for example 133457799BBCDFF1");
 
+        Label phoneLabel = new Label("Recipient Phone Number:");
+        phoneField = new TextField();
+        phoneField.setPromptText("International format, for example +970599123456");
+
+        Label emailLabel = new Label("Recipient Email:");
+        emailField = new TextField();
+        emailField.setPromptText("example@email.com");
 
         Button loadFileButton = new Button("Load File");
         Button encryptButton = new Button("Encrypt");
@@ -75,6 +95,8 @@ public class MainUI  extends BorderPane {
         Button loadKeyButton = new Button("Load Key");
         Button showKeyExpansionButton = new Button("Show Key Expansion");
         Button generateKeyButton = new Button("Generate Key");
+        Button sendKeySmsButton = new Button("Send Key SMS");
+        Button sendCiphertextEmailButton = new Button("Send Ciphertext Email");
         Button saveResultButton = new Button("Save Result");
 
 
@@ -91,6 +113,8 @@ public class MainUI  extends BorderPane {
         decryptTextButton.setOnAction(event -> decryptTextFromInputField());
         showKeyExpansionButton.setOnAction(event -> showKeyExpansion());
         generateKeyButton.setOnAction(event -> generateRandomKey());
+        sendKeySmsButton.setOnAction(event -> sendKeySms());
+        sendCiphertextEmailButton.setOnAction(event -> sendCiphertextEmail());
         saveResultButton.setOnAction(event -> saveLastOutput());
 
         // File actions are grouped together because they work with loaded files.
@@ -102,8 +126,11 @@ public class MainUI  extends BorderPane {
         // Text/key actions are grouped together because they work with typed text or the key field.
         HBox keyAndTextButtons = new HBox(10);
         keyAndTextButtons.getChildren().addAll(
-                decryptTextButton, loadKeyButton, showKeyExpansionButton, generateKeyButton
+                decryptTextButton, loadKeyButton, showKeyExpansionButton, generateKeyButton, sendKeySmsButton
         );
+
+        HBox emailButtons = new HBox(10);
+        emailButtons.getChildren().add(sendCiphertextEmailButton);
 
         VBox vBox = new VBox(10);
         vBox.setPadding(new Insets(20));
@@ -113,8 +140,13 @@ public class MainUI  extends BorderPane {
                 textField,
                 keyLabel,
                 keyField,
+                phoneLabel,
+                phoneField,
+                emailLabel,
+                emailField,
                 fileActionButtons,
                 keyAndTextButtons,
+                emailButtons,
                 resultLabel,
                 resultArea
         );
@@ -199,6 +231,7 @@ public class MainUI  extends BorderPane {
 
             if (!shouldEncryptSelectedFile()) {
                 String hexCipherText = BitUtil.bytesToHex(encryptedBytes);
+                rememberEncryptedText(hexCipherText, encryptedBytes);
                 resultArea.setText(
                         "Text encryption complete."
                                 + System.lineSeparator()
@@ -213,6 +246,7 @@ public class MainUI  extends BorderPane {
             File outputFile = fileHnadler.chooseSaveFile(getSceneWindow(), lastOutputSuggestedName);
             if (outputFile != null) {
                 fileHnadler.writeFileBytes(outputFile, encryptedBytes);
+                rememberEncryptedFile(encryptedBytes, outputFile.getName());
                 resultArea.setText(
                         "Encryption complete."
                                 + System.lineSeparator()
@@ -221,6 +255,7 @@ public class MainUI  extends BorderPane {
                                 + "Encrypted size: " + encryptedBytes.length + " bytes"
                 );
             } else {
+                rememberEncryptedFile(encryptedBytes, lastOutputSuggestedName);
                 resultArea.setText(
                         "Encryption complete, but save was canceled."
                                 + System.lineSeparator()
@@ -373,6 +408,62 @@ public class MainUI  extends BorderPane {
     }
 
     /**
+     * Sends the current DES key to the phone number typed in the phone field.
+     */
+    private void sendKeySms() {
+        try {
+            String keyHex = getValidatedKey();
+            String recipientPhoneNumber = phoneField.getText().trim();
+
+            String messageSid = smsService.sendKeySms(recipientPhoneNumber, keyHex);
+
+            resultArea.setText(
+                    "DES key sent by SMS."
+                            + System.lineSeparator()
+                            + "Recipient: " + recipientPhoneNumber
+                            + System.lineSeparator()
+                            + "Message SID: " + messageSid
+            );
+        } catch (IllegalArgumentException ex) {
+            showError("SMS failed", ex);
+        } catch (RuntimeException ex) {
+            showError("Twilio rejected the SMS request", ex);
+        }
+    }
+
+    /**
+     * Sends the latest encrypted text or encrypted file by email.
+     */
+    private void sendCiphertextEmail() {
+        try {
+            String recipientEmail = emailField.getText().trim();
+
+            if (lastEncryptedBytes == null) {
+                throw new IllegalArgumentException("Encrypt text or a file first, then send the email.");
+            }
+
+            if (lastEncryptedOutputIsText) {
+                emailService.sendCipherTextEmail(
+                        recipientEmail,
+                        "DES encrypted text",
+                        lastEncryptedTextHex
+                );
+                resultArea.setText("Encrypted text ciphertext sent to: " + recipientEmail);
+            } else {
+                emailService.sendEncryptedFileEmail(
+                        recipientEmail,
+                        "DES encrypted file",
+                        lastEncryptedBytes,
+                        lastEncryptedSuggestedName
+                );
+                resultArea.setText("Encrypted file sent to: " + recipientEmail);
+            }
+        } catch (IllegalArgumentException ex) {
+            showError("Email failed", ex);
+        }
+    }
+
+    /**
      * Saves the most recent encrypted or decrypted bytes again.
      */
     private void saveLastOutput() {
@@ -429,6 +520,20 @@ public class MainUI  extends BorderPane {
         }
 
         return "encrypted_text.des";
+    }
+
+    private void rememberEncryptedText(String hexCipherText, byte[] encryptedBytes) {
+        lastEncryptedTextHex = hexCipherText;
+        lastEncryptedBytes = encryptedBytes;
+        lastEncryptedSuggestedName = "encrypted_text.txt";
+        lastEncryptedOutputIsText = true;
+    }
+
+    private void rememberEncryptedFile(byte[] encryptedBytes, String fileName) {
+        lastEncryptedTextHex = null;
+        lastEncryptedBytes = encryptedBytes;
+        lastEncryptedSuggestedName = fileName;
+        lastEncryptedOutputIsText = false;
     }
 
     /**
