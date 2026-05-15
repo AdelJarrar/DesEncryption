@@ -12,15 +12,19 @@ import javafx.scene.layout.VBox;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * Main JavaFX screen for the DES application.
  *
- * <p>This class is responsible for user interaction only: selecting files,
+ * This class is responsible for user interaction only: selecting files,
  * reading key/text input, calling the DES services, and showing status
- * messages. The actual encryption logic stays in {@link DesDataService}.</p>
+ * messages. The actual encryption logic stays in {link DesDataService}.
  */
 public class MainUI  extends BorderPane {
+
+    private static final Path GENERATED_KEY_FILE = Path.of("generated_des_key.txt");
 
     private final FileHnadler fileHnadler = new FileHnadler();
     private final DesDataService desDataService = new DesDataService();
@@ -29,11 +33,28 @@ public class MainUI  extends BorderPane {
     private TextField keyField;
     private TextArea resultArea;
 
+    /*
+     * These fields remember the file the user loaded most recently.
+     * Encrypt and Decrypt can then use the already-read bytes instead of asking
+     * the user to choose the same file again.
+     */
     private File selectedFile;
     private byte[] selectedFileBytes;
+
+    /*
+     * These fields remember the latest encrypted or decrypted result.
+     * The Save Result button uses them if the user wants to save the output
+     * again after canceling or choosing another location.
+     */
     private byte[] lastOutputBytes;
     private String lastOutputSuggestedName;
 
+    /**
+     * Builds the whole UI screen in Java code.
+     *
+     * The constructor creates labels, text fields, buttons, and the result
+     * area, then connects each button to the method that performs its action.
+     */
     public MainUI() {
         Label titleLabel = new Label("Des Encryption");
         titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
@@ -47,11 +68,13 @@ public class MainUI  extends BorderPane {
         keyField.setPromptText("16 hex characters, for example 133457799BBCDFF1");
 
 
-        Button loadMediaButton = new Button("Load Image, Audio, Video");
+        Button loadFileButton = new Button("Load File");
         Button encryptButton = new Button("Encrypt");
         Button decryptButton = new Button("Decrypt");
-        Button loadTextButton = new Button("Load Text");
+        Button decryptTextButton = new Button("Decrypt Text");
         Button loadKeyButton = new Button("Load Key");
+        Button showKeyExpansionButton = new Button("Show Key Expansion");
+        Button generateKeyButton = new Button("Generate Key");
         Button saveResultButton = new Button("Save Result");
 
 
@@ -61,17 +84,25 @@ public class MainUI  extends BorderPane {
         resultArea.setWrapText(true);
         resultArea.setPrefHeight(500);
 
-        loadTextButton.setOnAction(event -> loadTextFile());
-        loadMediaButton.setOnAction(event -> loadMediaFile());
+        loadFileButton.setOnAction(event -> loadAnyFile());
         loadKeyButton.setOnAction(event -> loadKeyFile());
         encryptButton.setOnAction(event -> encryptCurrentInput());
-        decryptButton.setOnAction(event -> decryptSelectedFile());
+        decryptButton.setOnAction(event -> decryptLoadedFile());
+        decryptTextButton.setOnAction(event -> decryptTextFromInputField());
+        showKeyExpansionButton.setOnAction(event -> showKeyExpansion());
+        generateKeyButton.setOnAction(event -> generateRandomKey());
         saveResultButton.setOnAction(event -> saveLastOutput());
 
-        HBox buttonBox = new HBox(10);
-        buttonBox.getChildren().addAll(
-                encryptButton, decryptButton, loadMediaButton,
-                loadTextButton, loadKeyButton, saveResultButton
+        // File actions are grouped together because they work with loaded files.
+        HBox fileActionButtons = new HBox(10);
+        fileActionButtons.getChildren().addAll(
+                loadFileButton, encryptButton, decryptButton, saveResultButton
+        );
+
+        // Text/key actions are grouped together because they work with typed text or the key field.
+        HBox keyAndTextButtons = new HBox(10);
+        keyAndTextButtons.getChildren().addAll(
+                decryptTextButton, loadKeyButton, showKeyExpansionButton, generateKeyButton
         );
 
         VBox vBox = new VBox(10);
@@ -82,7 +113,8 @@ public class MainUI  extends BorderPane {
                 textField,
                 keyLabel,
                 keyField,
-                buttonBox,
+                fileActionButtons,
+                keyAndTextButtons,
                 resultLabel,
                 resultArea
         );
@@ -90,10 +122,11 @@ public class MainUI  extends BorderPane {
     }
 
     /**
-     * Lets the user choose a text file, stores its bytes, and previews the text.
+     * Lets the user choose any file, stores its bytes, and prepares it for
+     * either encryption or decryption.
      */
-    private void loadTextFile() {
-        File file = fileHnadler.chooseTextFile(getSceneWindow());
+    private void loadAnyFile() {
+        File file = fileHnadler.chooseAnyFile(getSceneWindow());
         if (file == null) {
             return;
         }
@@ -102,54 +135,39 @@ public class MainUI  extends BorderPane {
             selectedFile = file;
             selectedFileBytes = fileHnadler.readFileBytes(file);
             textField.setText(file.getAbsolutePath());
-            resultArea.setText(
-                    "Loaded text file: " + file.getAbsolutePath()
-                            + System.lineSeparator()
-                            + "Encrypt will use this file's bytes."
-                            + System.lineSeparator()
-                            + System.lineSeparator()
-                            + new String(selectedFileBytes, StandardCharsets.UTF_8)
-            );
-        } catch (IOException | IllegalArgumentException ex) {
-            showError("Could not load text file", ex);
-        }
-    }
 
-    /**
-     * Lets the user choose a media file and stores the raw bytes.
-     *
-     * <p>Images, audio, and video are binary data, so the UI shows only the
-     * file path and size instead of printing the raw bytes.</p>
-     */
-    private void loadMediaFile() {
-        File file = fileHnadler.chooseMediaFile(getSceneWindow());
-        if (file == null) {
-            return;
-        }
-
-        try {
-            selectedFile = file;
-            selectedFileBytes = fileHnadler.readFileBytes(file);
-            textField.setText(file.getAbsolutePath());
-            resultArea.setText(
-                    "Loaded file: " + file.getAbsolutePath()
-                            + System.lineSeparator()
-                            + "Size: " + selectedFileBytes.length + " bytes"
-                            + System.lineSeparator()
-                            + "Encrypt will use this file's bytes."
-                            + System.lineSeparator()
-                            + "Binary file contents are not displayed here."
-            );
+            if (isTextFile(file)) {
+                resultArea.setText(
+                        "Loaded text file: " + file.getAbsolutePath()
+                                + System.lineSeparator()
+                                + "Size: " + selectedFileBytes.length + " bytes"
+                                + System.lineSeparator()
+                                + "Click Encrypt to encrypt it, or Decrypt if this file is encrypted data."
+                                + System.lineSeparator()
+                                + System.lineSeparator()
+                                + new String(selectedFileBytes, StandardCharsets.UTF_8)
+                );
+            } else {
+                resultArea.setText(
+                        "Loaded file: " + file.getAbsolutePath()
+                                + System.lineSeparator()
+                                + "Size: " + selectedFileBytes.length + " bytes"
+                                + System.lineSeparator()
+                                + "Click Encrypt to encrypt it, or Decrypt if this file is encrypted data."
+                                + System.lineSeparator()
+                                + "Binary file contents are not displayed here."
+                );
+            }
         } catch (IOException | IllegalArgumentException ex) {
-            showError("Could not load media file", ex);
+            showError("Could not load file", ex);
         }
     }
 
     /**
      * Loads a DES key from a small text file.
      *
-     * <p>The file should contain one key such as 133457799BBCDFF1. Whitespace
-     * before or after the key is ignored.</p>
+     * The file should contain one key such as 133457799BBCDFF1. Whitespace
+     * before or after the key is ignored.
      */
     private void loadKeyFile() {
         File file = fileHnadler.chooseTextFile(getSceneWindow());
@@ -172,12 +190,25 @@ public class MainUI  extends BorderPane {
      */
     private void encryptCurrentInput() {
         try {
-            String keyHex = keyField.getText().trim();
+            String keyHex = getValidatedKey();
             byte[] inputBytes = getBytesToEncrypt();
 
             byte[] encryptedBytes = desDataService.encryptBytes(inputBytes, keyHex);
             lastOutputBytes = encryptedBytes;
             lastOutputSuggestedName = getEncryptedDefaultName();
+
+            if (!shouldEncryptSelectedFile()) {
+                String hexCipherText = BitUtil.bytesToHex(encryptedBytes);
+                resultArea.setText(
+                        "Text encryption complete."
+                                + System.lineSeparator()
+                                + "Copy this hexadecimal ciphertext into the input field, then click Decrypt Text:"
+                                + System.lineSeparator()
+                                + System.lineSeparator()
+                                + hexCipherText
+                );
+                return;
+            }
 
             File outputFile = fileHnadler.chooseSaveFile(getSceneWindow(), lastOutputSuggestedName);
             if (outputFile != null) {
@@ -204,21 +235,52 @@ public class MainUI  extends BorderPane {
     }
 
     /**
-     * Chooses an encrypted file, decrypts it, and asks where to save the result.
+     * Decrypts short text that was encrypted and shown as hexadecimal.
+     *
+     * The input field should contain the hexadecimal ciphertext produced by
+     * encrypting typed text with the Encrypt button.
      */
-    private void decryptSelectedFile() {
-        File encryptedFile = fileHnadler.chooseEncryptedFile(getSceneWindow());
-        if (encryptedFile == null) {
+    private void decryptTextFromInputField() {
+        try {
+            String keyHex = getValidatedKey();
+            String hexCipherText = textField.getText().trim().replaceAll("\\s+", "");
+            if (hexCipherText.isEmpty()) {
+                throw new IllegalArgumentException("Enter hexadecimal ciphertext in the input field first.");
+            }
+
+            byte[] encryptedBytes = BitUtil.hexToBytes(hexCipherText);
+            byte[] decryptedBytes = desDataService.decryptBytes(encryptedBytes, keyHex);
+            String plainText = new String(decryptedBytes, StandardCharsets.UTF_8);
+
+            lastOutputBytes = decryptedBytes;
+            lastOutputSuggestedName = "decrypted_text.txt";
+
+            resultArea.setText(
+                    "Text decryption complete."
+                            + System.lineSeparator()
+                            + System.lineSeparator()
+                            + plainText
+            );
+        } catch (IllegalArgumentException ex) {
+            showError("Text decryption failed. Make sure the input is hexadecimal ciphertext and the key is correct", ex);
+        }
+    }
+
+    /**
+     * Decrypts the currently loaded file and asks where to save the result.
+     */
+    private void decryptLoadedFile() {
+        if (!shouldEncryptSelectedFile()) {
+            resultArea.setText("Load an encrypted file first, then click Decrypt.");
             return;
         }
 
         try {
-            String keyHex = keyField.getText().trim();
-            byte[] encryptedBytes = fileHnadler.readFileBytes(encryptedFile);
-            byte[] decryptedBytes = desDataService.decryptBytes(encryptedBytes, keyHex);
+            String keyHex = getValidatedKey();
+            byte[] decryptedBytes = desDataService.decryptBytes(selectedFileBytes, keyHex);
 
             lastOutputBytes = decryptedBytes;
-            lastOutputSuggestedName = getRestoredDefaultName(encryptedFile);
+            lastOutputSuggestedName = getRestoredDefaultName(selectedFile);
 
             File outputFile = fileHnadler.chooseSaveFile(getSceneWindow(), lastOutputSuggestedName);
             if (outputFile != null) {
@@ -241,6 +303,72 @@ public class MainUI  extends BorderPane {
             }
         } catch (IOException | IllegalArgumentException ex) {
             showError("Decryption failed", ex);
+        }
+    }
+
+    /**
+     * Shows the 16 DES round keys generated from the current key.
+     *
+     * Each key is displayed in binary and hexadecimal, matching the key
+     * expansion requirement from the project description.
+     */
+    private void showKeyExpansion() {
+        try {
+            String keyHex = getValidatedKey();
+            KeyUtil keyUtil = new KeyUtil();
+            String[] roundKeys = keyUtil.generateRoundKeys(keyHex);
+
+            StringBuilder output = new StringBuilder();
+            output.append("DES key expansion for key: ").append(keyHex).append(System.lineSeparator());
+            output.append(System.lineSeparator());
+
+            for (int i = 0; i < roundKeys.length; i++) {
+                output.append("K").append(i + 1).append(System.lineSeparator());
+                output.append("Binary: ").append(roundKeys[i]).append(System.lineSeparator());
+                output.append("Hex: ").append(BitUtil.binaryToHex(roundKeys[i])).append(System.lineSeparator());
+                if (i < roundKeys.length - 1) {
+                    output.append(System.lineSeparator());
+                }
+            }
+
+            resultArea.setText(output.toString());
+        } catch (IllegalArgumentException ex) {
+            showError("Could not show key expansion", ex);
+        }
+    }
+
+    /**
+     * Generates a valid random DES key, puts it in the key field, and saves it
+     * to generated_des_key.txt in the project folder.
+     */
+    private void generateRandomKey() {
+        String key = KeyUtil.generateRandomDesKey();
+        keyField.setText(key);
+
+        try {
+            Files.writeString(GENERATED_KEY_FILE, key + System.lineSeparator(), StandardCharsets.UTF_8);
+            resultArea.setText(
+                    "Generated random DES key:"
+                            + System.lineSeparator()
+                            + System.lineSeparator()
+                            + key
+                            + System.lineSeparator()
+                            + System.lineSeparator()
+                            + "Saved to: " + GENERATED_KEY_FILE.toAbsolutePath()
+            );
+        } catch (IOException ex) {
+            resultArea.setText(
+                    "Generated random DES key:"
+                            + System.lineSeparator()
+                            + System.lineSeparator()
+                            + key
+                            + System.lineSeparator()
+                            + System.lineSeparator()
+                            + "Warning: the key was generated, but it could not be saved to "
+                            + GENERATED_KEY_FILE.toAbsolutePath()
+                            + System.lineSeparator()
+                            + ex.getMessage()
+            );
         }
     }
 
@@ -269,34 +397,88 @@ public class MainUI  extends BorderPane {
     /**
      * Chooses what Encrypt should process.
      *
-     * <p>If a file was loaded, encryption uses the file bytes. Otherwise, it
-     * uses the text typed directly in the input field.</p>
+     * If a file was loaded, encryption uses the file bytes. Otherwise, it
+     * uses the text typed directly in the input field.
      */
     private byte[] getBytesToEncrypt() {
-        if (selectedFileBytes != null) {
+        if (shouldEncryptSelectedFile()) {
             return selectedFileBytes;
         }
 
-        return textField.getText().getBytes(StandardCharsets.UTF_8);
+        String text = textField.getText();
+        if (text == null || text.isEmpty()) {
+            throw new IllegalArgumentException("Enter text or load a supported file first.");
+        }
+
+        return text.getBytes(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * A selected file is used only while its path is still shown in the input field.
+     * If the user replaces the path with typed text, Encrypt uses that text instead.
+     */
+    private boolean shouldEncryptSelectedFile() {
+        return selectedFile != null
+                && selectedFileBytes != null
+                && textField.getText().equals(selectedFile.getAbsolutePath());
     }
 
     private String getEncryptedDefaultName() {
-        if (selectedFile != null) {
+        if (shouldEncryptSelectedFile()) {
             return selectedFile.getName() + ".des";
         }
 
         return "encrypted_text.des";
     }
 
+    /**
+     * Suggests a filename for decrypted file output.
+     *
+     * If the encrypted file is named {@code photo.jpg.des}, removing
+     * {code .des} suggests {code photo.jpg}, which restores the original
+     * extension for normal project use.
+     */
     private String getRestoredDefaultName(File encryptedFile) {
         String name = encryptedFile.getName();
         if (name.toLowerCase().endsWith(".des")) {
             name = name.substring(0, name.length() - 4);
+            if (name.isBlank()) {
+                name = "decrypted_output";
+            }
+            return name;
         }
 
         return "restored_" + name;
     }
 
+    /**
+     * Checks whether a loaded file can be safely previewed as text.
+     */
+    private boolean isTextFile(File file) {
+        return file.getName().toLowerCase().endsWith(".txt");
+    }
+
+    /**
+     * Reads and validates the key from the key field.
+     *
+     * DES keys are entered as 16 hexadecimal characters, which represent
+     * the original 64-bit DES key before PC-1 removes parity bits.
+     */
+    private String getValidatedKey() {
+        String keyHex = keyField.getText().trim();
+        if (keyHex.isEmpty()) {
+            throw new IllegalArgumentException("Enter a DES key first. The key must be 16 hexadecimal characters.");
+        }
+        if (keyHex.length() != 16 || !keyHex.matches("[0-9a-fA-F]+")) {
+            throw new IllegalArgumentException("DES key must be exactly 16 hexadecimal characters, for example 133457799BBCDFF1.");
+        }
+
+        return keyHex.toUpperCase();
+    }
+
+    /**
+     * Returns the JavaFX window that owns file chooser dialogs.
+     */
     private javafx.stage.Window getSceneWindow() {
         if (getScene() == null) {
             return null;
@@ -305,6 +487,9 @@ public class MainUI  extends BorderPane {
         return getScene().getWindow();
     }
 
+    /**
+     * Shows an error message in the result area instead of printing to console.
+     */
     private void showError(String prefix, Exception ex) {
         resultArea.setText(prefix + ": " + ex.getMessage());
     }

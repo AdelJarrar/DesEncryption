@@ -3,9 +3,9 @@ package com.example.desencryption;
 /**
  * DES permutation, substitution, and key-schedule tables.
  *
- * <p>The numeric positions in the DES specification are 1-based. Code that
+ * The numeric positions in the DES specification are 1-based. Code that
  * uses these tables with Java strings or arrays should subtract 1 before
- * indexing.</p>
+ * indexing.
  */
 public final class PermutationTables {
 
@@ -15,9 +15,9 @@ public final class PermutationTables {
     /**
      * Initial permutation table.
      *
-     * <p>DES applies this table to the original 64-bit plaintext block before
+     * DES applies this table to the original 64-bit plaintext block before
      * splitting the result into the left and right 32-bit halves used by the
-     * 16 Feistel rounds.</p>
+     * 16 Feistel rounds.
      */
     public static final int[] INITIAL_PERMUTATION = {
             58, 50, 42, 34, 26, 18, 10, 2,
@@ -33,9 +33,9 @@ public final class PermutationTables {
     /**
      * Final permutation table.
      *
-     * <p>DES applies this inverse of the initial permutation to the 64-bit
+     * DES applies this inverse of the initial permutation to the 64-bit
      * block produced after the 16 Feistel rounds and the final left/right
-     * swap.</p>
+     * swap.
      */
     public static final int[] FINAL_PERMUTATION = {
             40, 8, 48, 16, 56, 24, 64, 32,
@@ -51,9 +51,9 @@ public final class PermutationTables {
     /**
      * Expansion permutation table.
      *
-     * <p>The DES Feistel function uses this table to expand the 32-bit right
+     * The DES Feistel function uses this table to expand the 32-bit right
      * half of the block into 48 bits. The expanded result is XORed with the
-     * current 48-bit round key before S-box substitution.</p>
+     * current 48-bit round key before S-box substitution.
      */
     public static final int[] EXPANSION_PERMUTATION = {
             32, 1, 2, 3, 4, 5,
@@ -69,9 +69,9 @@ public final class PermutationTables {
     /**
      * P permutation table.
      *
-     * <p>The DES Feistel function applies this table to the 32-bit output
+     * The DES Feistel function applies this table to the 32-bit output
      * produced by the eight S-boxes. This spreads the S-box output bits before
-     * they are XORed with the left half of the block.</p>
+     * they are XORed with the left half of the block.
      */
     public static final int[] P_PERMUTATION = {
             16, 7, 20, 21,
@@ -87,11 +87,11 @@ public final class PermutationTables {
     /**
      * S-box substitution tables.
      *
-     * <p>The DES Feistel function splits the 48-bit value produced after
+     * The DES Feistel function splits the 48-bit value produced after
      * expansion and round-key XOR into eight 6-bit chunks. Each chunk is passed
      * through the matching S-box. The first and last bits select the row, and
      * the middle four bits select the column. Each S-box returns a 4-bit value,
-     * producing 32 bits total.</p>
+     * producing 32 bits total.
      */
     public static final int[][][] S_BOXES = {
             {
@@ -147,9 +147,9 @@ public final class PermutationTables {
     /**
      * Permuted Choice 1 key-schedule table.
      *
-     * <p>DES applies this table to the original 64-bit key to remove the eight
+     * DES applies this table to the original 64-bit key to remove the eight
      * parity bits and permute the remaining bits into a 56-bit key. The result
-     * is split into the C0 and D0 28-bit halves.</p>
+     * is split into the C0 and D0 28-bit halves.
      */
     public static final int[] PC1 = {
             57, 49, 41, 33, 25, 17, 9, 1,
@@ -164,9 +164,9 @@ public final class PermutationTables {
     /**
      * Permuted Choice 2 key-schedule table.
      *
-     * <p>DES applies this table after each round's circular left shifts. It
+     * DES applies this table after each round's circular left shifts. It
      * compresses the combined 56-bit C and D halves into the 48-bit round key
-     * used by the Feistel function.</p>
+     * used by the Feistel function.
      */
     public static final int[] PC2 = {
             14, 17, 11, 24, 1, 5, 3, 28,
@@ -180,9 +180,9 @@ public final class PermutationTables {
     /**
      * Key-schedule circular left-shift counts.
      *
-     * <p>Each value tells DES how many positions to rotate both 28-bit key
+     * Each value tells DES how many positions to rotate both 28-bit key
      * halves left before generating that round's 48-bit key. Rounds 1, 2, 9,
-     * and 16 rotate once; the other rounds rotate twice.</p>
+     * and 16 rotate once; the other rounds rotate twice.
      */
     public static final int[] ROUND_SHIFTS = {
             1, 1, 2, 2, 2, 2, 2, 2,

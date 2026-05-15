@@ -14,9 +14,12 @@ public final class BlockUtil {
     /**
      * Converts exactly 8 bytes into a 64-bit binary string.
      *
-     * @param block the 8-byte block to convert
-     * @return the 64-bit binary representation
-     * @throws IllegalArgumentException if block is null or not exactly 8 bytes
+     * DES works with bits, but files are read as bytes. This method is the
+     * bridge between those two forms.
+     *
+     * param block the 8-byte block to convert
+     * return the 64-bit binary representation
+     * throws IllegalArgumentException if block is null or not exactly 8 bytes
      */
     public static String bytesToBinaryBlock(byte[] block) {
         if (block == null) {
@@ -29,6 +32,7 @@ public final class BlockUtil {
         StringBuilder binary = new StringBuilder(DES_BLOCK_BITS);
 
         for (byte value : block) {
+            // Java bytes are signed, so & 0xFF treats the value as an unsigned byte from 0 to 255.
             String byteBinary = Integer.toBinaryString(value & 0xFF);
             binary.append(String.format("%8s", byteBinary).replace(' ', '0'));
         }
@@ -39,9 +43,12 @@ public final class BlockUtil {
     /**
      * Converts a 64-bit binary string into exactly 8 bytes.
      *
-     * @param binaryBlock the 64-bit binary block to convert
-     * @return the 8-byte representation
-     * @throws IllegalArgumentException if binaryBlock is null, not exactly
+     * This is used after DES finishes a block, so the result can be written
+     * back to a file or displayed as text/hex.
+     *
+     * param binaryBlock the 64-bit binary block to convert
+     * return the 8-byte representation
+     * throws IllegalArgumentException if binaryBlock is null, not exactly
      *                                  64 bits, or contains non-binary chars
      */
     public static byte[] binaryBlockToBytes(String binaryBlock) {
@@ -58,6 +65,7 @@ public final class BlockUtil {
         byte[] block = new byte[DES_BLOCK_BYTES];
 
         for (int i = 0; i < DES_BLOCK_BYTES; i++) {
+            // Every 8 bits make one byte.
             String byteBinary = binaryBlock.substring(i * 8, (i + 1) * 8);
             block[i] = (byte) Integer.parseInt(byteBinary, 2);
         }

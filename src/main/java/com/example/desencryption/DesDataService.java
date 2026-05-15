@@ -3,10 +3,10 @@ package com.example.desencryption;
 /**
  * Encrypts and decrypts raw byte arrays using DES.
  *
- * <p>This class is the multi-block layer above {@link DesCipher}. It does not
+ * This class is the multi-block layer above {link DesCipher}. It does not
  * read files, open dialogs, or interact with the UI. It accepts raw bytes,
  * applies PKCS5 padding before encryption, processes the data in 8-byte DES
- * blocks, and removes PKCS5 padding after decryption.</p>
+ * blocks, and removes PKCS5 padding after decryption.
  */
 public class DesDataService {
 
@@ -17,10 +17,10 @@ public class DesDataService {
     /**
      * Encrypts any byte array by padding it and processing each 8-byte block.
      *
-     * @param input  the raw bytes to encrypt
-     * @param keyHex the DES key as exactly 16 hexadecimal characters
-     * @return encrypted bytes whose length is a multiple of 8
-     * @throws IllegalArgumentException if input is null or keyHex is invalid
+     * param input  the raw bytes to encrypt
+     * param keyHex the DES key as exactly 16 hexadecimal characters
+     * return encrypted bytes whose length is a multiple of 8
+     * throws IllegalArgumentException if input is null or keyHex is invalid
      */
     public byte[] encryptBytes(byte[] input, String keyHex) {
         if (input == null) {
@@ -64,10 +64,10 @@ public class DesDataService {
     /**
      * Decrypts bytes produced by encryptBytes().
      *
-     * @param encryptedInput encrypted bytes; length must be a non-empty multiple of 8
-     * @param keyHex         the DES key as exactly 16 hexadecimal characters
-     * @return the original unpadded bytes
-     * @throws IllegalArgumentException if encryptedInput is null, empty, not a
+     * param encryptedInput encrypted bytes; length must be a non-empty multiple of 8
+     * param keyHex         the DES key as exactly 16 hexadecimal characters
+     * return the original unpadded bytes
+     * throws IllegalArgumentException if encryptedInput is null, empty, not a
      *                                  multiple of 8, has invalid padding, or
      *                                  keyHex is invalid
      */

@@ -5,9 +5,9 @@ import java.math.BigInteger;
 /**
  * Generic helper methods for binary-string operations used by DES.
  *
- * <p>This class does not contain DES tables or cipher-round logic. It only
+ * This class does not contain DES tables or cipher-round logic. It only
  * handles reusable bit manipulation such as permutation, XOR, conversion, and
- * splitting.</p>
+ * splitting.
  */
 public final class BitUtil {
 
@@ -17,10 +17,10 @@ public final class BitUtil {
     /**
      * Applies a 1-based permutation table to the input string.
      *
-     * @param input the source string to permute
-     * @param table the 1-based positions to read from input
-     * @return the permuted string
-     * @throws IllegalArgumentException if input or table is null, or a table
+     *  input the source string to permute
+     *  table the 1-based positions to read from input
+     * return the permuted string
+     * throws IllegalArgumentException if input or table is null, or a table
      *                                  position is outside the input bounds
      */
     public static String applyPermutation(String input, int[] table) {
@@ -49,10 +49,10 @@ public final class BitUtil {
     /**
      * Computes bitwise XOR for two equal-length binary strings.
      *
-     * @param left  the first binary string
-     * @param right the second binary string
-     * @return the XOR result as a binary string
-     * @throws IllegalArgumentException if either value is null, contains a
+     * param left  the first binary string
+     * param right the second binary string
+     * return the XOR result as a binary string
+     * throws IllegalArgumentException if either value is null, contains a
      *                                  non-binary character, or lengths differ
      */
     public static String xor(String left, String right) {
@@ -75,10 +75,10 @@ public final class BitUtil {
     /**
      * Converts a hexadecimal string into a fixed-length binary string.
      *
-     * @param hex          the hexadecimal value to convert
-     * @param expectedBits the exact number of bits to return
-     * @return the binary value padded with leading zeroes
-     * @throws IllegalArgumentException if the value is null, not hexadecimal,
+     * param hex          the hexadecimal value to convert
+     * param expectedBits the exact number of bits to return
+     * return the binary value padded with leading zeroes
+     * throws IllegalArgumentException if the value is null, not hexadecimal,
      *                                  expectedBits is negative, or the value
      *                                  does not fit in expectedBits
      */
@@ -105,12 +105,12 @@ public final class BitUtil {
     /**
      * Converts a binary string into uppercase hexadecimal.
      *
-     * <p>The output is padded to preserve complete 4-bit groups. For example,
-     * {@code 00000001} becomes {@code 01}.</p>
+     * The output is padded to preserve complete 4-bit groups. For example,
+     * {code 00000001} becomes {@code 01}.
      *
-     * @param binary the binary value to convert
-     * @return the uppercase hexadecimal value
-     * @throws IllegalArgumentException if binary is null or contains a
+     * param binary the binary value to convert
+     * return the uppercase hexadecimal value
+     * throws IllegalArgumentException if binary is null or contains a
      *                                  non-binary character
      */
     public static String binaryToHex(String binary) {
@@ -123,11 +123,63 @@ public final class BitUtil {
     }
 
     /**
+     * Converts raw bytes into uppercase hexadecimal text.
+     *
+     * This is useful for showing encrypted text in the UI, because encrypted
+     * bytes may contain characters that cannot be displayed safely.
+     *
+     * param bytes the bytes to convert
+     * return the bytes as uppercase hexadecimal text
+     * throws IllegalArgumentException if bytes is null
+     */
+    public static String bytesToHex(byte[] bytes) {
+        if (bytes == null) {
+            throw new IllegalArgumentException("Bytes must not be null.");
+        }
+
+        StringBuilder hex = new StringBuilder(bytes.length * 2);
+        for (byte value : bytes) {
+            hex.append(String.format("%02X", value & 0xFF));
+        }
+
+        return hex.toString();
+    }
+
+    /**
+     * Converts hexadecimal text back into raw bytes.
+     *
+     * param hex the hexadecimal text to convert
+     * return the decoded bytes
+     * throws IllegalArgumentException if hex is null, has odd length, or
+     *                                  contains non-hexadecimal characters
+     */
+    public static byte[] hexToBytes(String hex) {
+        if (hex == null) {
+            throw new IllegalArgumentException("Hex value must not be null.");
+        }
+        if (hex.length() % 2 != 0) {
+            throw new IllegalArgumentException("Hex value must have an even number of characters.");
+        }
+        if (!hex.matches("[0-9a-fA-F]*")) {
+            throw new IllegalArgumentException("Hex value must contain only hexadecimal characters.");
+        }
+
+        byte[] bytes = new byte[hex.length() / 2];
+        for (int i = 0; i < bytes.length; i++) {
+            int start = i * 2;
+            String hexByte = hex.substring(start, start + 2);
+            bytes[i] = (byte) Integer.parseInt(hexByte, 16);
+        }
+
+        return bytes;
+    }
+
+    /**
      * Returns the first half of an even-length string.
      *
-     * @param input the value to split
-     * @return the left half
-     * @throws IllegalArgumentException if input is null or has odd length
+     * param input the value to split
+     * return the left half
+     * throws IllegalArgumentException if input is null or has odd length
      */
     public static String leftHalf(String input) {
         validateEvenLength(input);
@@ -137,9 +189,9 @@ public final class BitUtil {
     /**
      * Returns the second half of an even-length string.
      *
-     * @param input the value to split
-     * @return the right half
-     * @throws IllegalArgumentException if input is null or has odd length
+     * param input the value to split
+     * return the right half
+     * throws IllegalArgumentException if input is null or has odd length
      */
     public static String rightHalf(String input) {
         validateEvenLength(input);
