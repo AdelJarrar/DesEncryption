@@ -9,6 +9,7 @@ import java.io.IOException;
 
 public class HelloApplication extends Application {
     @Override
+
     public void start(Stage stage) throws IOException {
         Scene scene = new Scene(new MainUI(), 800, 800);
         stage.setTitle("Des Encryption");
@@ -19,3 +20,4 @@ public class HelloApplication extends Application {
         launch();
     }
 }
+

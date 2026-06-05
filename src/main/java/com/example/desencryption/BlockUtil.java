@@ -1,75 +1,76 @@
 package com.example.desencryption;
 
-/**
- * Converts between 8-byte blocks and the 64-bit binary strings used by DES.
- */
 public final class BlockUtil {
 
     private static final int DES_BLOCK_BYTES = 8;
     private static final int DES_BLOCK_BITS = 64;
 
+    /* Handles BlockUtil. */
     private BlockUtil() {
+        // Stops callers from creating this utility class.
     }
 
-    /**
-     * Converts exactly 8 bytes into a 64-bit binary string.
-     *
-     * DES works with bits, but files are read as bytes. This method is the
-     * bridge between those two forms.
-     *
-     * param block the 8-byte block to convert
-     * return the 64-bit binary representation
-     * throws IllegalArgumentException if block is null or not exactly 8 bytes
-     */
+    /* Handles bytesToBinaryBlock. */
     public static String bytesToBinaryBlock(byte[] block) {
+        // Checks the condition before continuing.
         if (block == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Block must not be null.");
         }
+        // Checks the condition before continuing.
         if (block.length != DES_BLOCK_BYTES) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Block must be exactly 8 bytes.");
         }
 
+        // Creates a local value for this method.
         StringBuilder binary = new StringBuilder(DES_BLOCK_BITS);
 
+        // Loops through the needed values.
         for (byte value : block) {
             // Java bytes are signed, so & 0xFF treats the value as an unsigned byte from 0 to 255.
+            // Creates a local value for this method.
             String byteBinary = Integer.toBinaryString(value & 0xFF);
+            // Appends text to the builder.
             binary.append(String.format("%8s", byteBinary).replace(' ', '0'));
         }
 
+        // Returns the result to the caller.
         return binary.toString();
     }
 
-    /**
-     * Converts a 64-bit binary string into exactly 8 bytes.
-     *
-     * This is used after DES finishes a block, so the result can be written
-     * back to a file or displayed as text/hex.
-     *
-     * param binaryBlock the 64-bit binary block to convert
-     * return the 8-byte representation
-     * throws IllegalArgumentException if binaryBlock is null, not exactly
-     *                                  64 bits, or contains non-binary chars
-     */
+    /* Handles binaryBlockToBytes. */
     public static byte[] binaryBlockToBytes(String binaryBlock) {
+        // Checks the condition before continuing.
         if (binaryBlock == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Binary block must not be null.");
         }
+        // Checks the condition before continuing.
         if (binaryBlock.length() != DES_BLOCK_BITS) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Binary block must be exactly 64 bits.");
         }
+        // Checks the condition before continuing.
         if (!binaryBlock.matches("[01]+")) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Binary block must contain only 0 and 1.");
         }
 
+        // Creates a local value for this method.
         byte[] block = new byte[DES_BLOCK_BYTES];
 
+        // Loops through the needed values.
         for (int i = 0; i < DES_BLOCK_BYTES; i++) {
             // Every 8 bits make one byte.
+            // Creates a local value for this method.
             String byteBinary = binaryBlock.substring(i * 8, (i + 1) * 8);
+            // Stores the value used by this method.
             block[i] = (byte) Integer.parseInt(byteBinary, 2);
         }
 
+        // Returns the result to the caller.
         return block;
     }
 }
+

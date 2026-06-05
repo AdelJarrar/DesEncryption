@@ -1,236 +1,202 @@
 package com.example.desencryption;
 
-/**
- * Implements the DES algorithm for one 64-bit block at a time.
- *
- * This class follows the same DES flow shown in the project pseudocode:
- * initial permutation, split into left/right halves, 16 Feistel rounds, then
- * final permutation. Larger text and files are handled by {link DesDataService},
- * which calls this class once for each 8-byte block.
- */
 public class DesCipher {
 
-    /**
-     * Applies the DES initial permutation table to a 64-bit block.
-     *
-     * This step only rearranges the bits. It does not encrypt by itself.
-     *
-     * param block the 64-bit binary block before the DES rounds
-     * return the same bits rearranged by the initial permutation table
-     */
+    /* Handles initialPermutation. */
     public String initialPermutation(String block){
+        // Returns the result to the caller.
         return BitUtil.applyPermutation(block,PermutationTables.INITIAL_PERMUTATION);
     }
 
-    /**
-     * Applies the DES final permutation table to a 64-bit block.
-     *
-     * This is the last rearrangement after all 16 DES rounds finish.
-     *
-     * param block the 64-bit binary block after the DES rounds
-     * return the final 64-bit encrypted or decrypted block
-     */
+    /* Handles finalPermutation. */
     public String finalPermutation(String block){
+        // Returns the result to the caller.
         return BitUtil.applyPermutation(block,PermutationTables.FINAL_PERMUTATION);
     }
 
-    /**
-     * Expands the right half from 32 bits to 48 bits.
-     *
-     * DES does this so the right half can be XORed with a 48-bit round key.
-     *
-     * param rightBlock the 32-bit right half of the current DES block
-     * return a 48-bit expanded version of rightBlock
-     */
+    /* Handles expand. */
     public String expand(String rightBlock) {
+        // Returns the result to the caller.
         return BitUtil.applyPermutation(
+                // Runs this line of the method.
                 rightBlock,
+                // Runs this line of the method.
                 PermutationTables.EXPANSION_PERMUTATION
         );
     }
 
-    /**
-     * Runs the DES S-box substitution step.
-     *
-     * The input is split into eight groups of 6 bits. Each group is sent to
-     * one S-box, and each S-box returns 4 bits. That changes 48 bits into
-     * 32 bits.
-     *
-     * param input48 the 48-bit value after expansion and XOR with the round key
-     * return the 32-bit value produced by the eight S-boxes
-     */
+    /* Handles substitute. */
     public String substitute(String input48) {
+        // Checks the condition before continuing.
         if (input48 == null || input48.length() != 48 || !input48.matches("[01]+")) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("S-box input must be exactly 48 bits.");
         }
 
+        // Creates a local value for this method.
         StringBuilder output32 = new StringBuilder(32);
 
+        // Loops through the needed values.
         for (int i = 0; i < 8; i++) {
+            // Creates a local value for this method.
             int start = i * 6;
 
             // Take one group of 6 bits for the current S-box.
+            // Creates a local value for this method.
             int b1 = input48.charAt(start) - '0';
+            // Creates a local value for this method.
             int b2 = input48.charAt(start + 1) - '0';
+            // Creates a local value for this method.
             int b3 = input48.charAt(start + 2) - '0';
+            // Creates a local value for this method.
             int b4 = input48.charAt(start + 3) - '0';
+            // Creates a local value for this method.
             int b5 = input48.charAt(start + 4) - '0';
+            // Creates a local value for this method.
             int b6 = input48.charAt(start + 5) - '0';
 
             // The first and last bits choose the S-box row.
+            // Creates a local value for this method.
             int row = 2 * b1 + b6;
 
             // The four middle bits choose the S-box column.
+            // Creates a local value for this method.
             int col = 8 * b2 + 4 * b3 + 2 * b4 + b5;
 
+            // Creates a local value for this method.
             int value = PermutationTables.S_BOXES[i][row][col];
 
             // Convert the S-box number, 0 through 15, back into 4 bits.
+            // Appends text to the builder.
             output32.append((value / 8) % 2);
+            // Appends text to the builder.
             output32.append((value / 4) % 2);
+            // Appends text to the builder.
             output32.append((value / 2) % 2);
+            // Appends text to the builder.
             output32.append(value % 2);
         }
 
+        // Returns the result to the caller.
         return output32.toString();
     }
 
-    /**
-     * Runs the DES f function for one round.
-     *
-     * The f function expands the right half, XORs it with the round key,
-     * applies the S-boxes, then applies the P permutation.
-     *
-     * param rightBlock the 32-bit right half for this round
-     * param roundKey   the 48-bit key for this round
-     * return the 32-bit output of the f function
-     */
+    /* Handles feistelFunction. */
     public String feistelFunction(String rightBlock, String roundKey) {
+        // Creates a local value for this method.
         String expanded = expand(rightBlock);
+        // Creates a local value for this method.
         String xored = BitUtil.xor(expanded, roundKey);
+        // Creates a local value for this method.
         String substituted = substitute(xored);
+        // Returns the result to the caller.
         return BitUtil.applyPermutation(
+                // Runs this line of the method.
                 substituted,
+                // Runs this line of the method.
                 PermutationTables.P_PERMUTATION
         );
     }
 
-    /**
-     * Performs the DES mixer step for one round.
-     *
-     * It applies the f function to the right half, then XORs that result
-     * with the left half. The returned value becomes the new left side before
-     * the optional swap in the round loop.
-     *
-     * param leftBlock  the current 32-bit left half
-     * param rightBlock the current 32-bit right half
-     * param roundKey   the 48-bit key for this round
-     * return the mixed 32-bit result
-     */
+    /* Handles mixer. */
     public String mixer(String leftBlock, String rightBlock, String roundKey) {
+        // Creates a local value for this method.
         String t1 = rightBlock;
+        // Creates a local value for this method.
         String t2 = feistelFunction(t1, roundKey);
+        // Creates a local value for this method.
         String t3 = BitUtil.xor(leftBlock, t2);
 
+        // Returns the result to the caller.
         return t3;
     }
 
-    /**
-     * Swaps the left and right halves.
-     *
-     * DES swaps after every round except the final round.
-     *
-     * param leftBlock  the current left half
-     * param rightBlock the current right half
-     * return an array where index 0 is the new left half and index 1 is the new right half
-     */
+    /* Handles swapper. */
     public String[] swapper(String leftBlock, String rightBlock) {
+        // Creates a local value for this method.
         String temp = leftBlock;
+        // Stores the value used by this method.
         leftBlock = rightBlock;
+        // Stores the value used by this method.
         rightBlock = temp;
 
+        // Returns the result to the caller.
         return new String[]{leftBlock, rightBlock};
     }
 
-    /**
-     * Encrypts or decrypts one 64-bit binary block using the provided round keys.
-     *
-     * The same method works for encryption and decryption. Encryption passes
-     * keys K1 to K16. Decryption passes the same keys in reverse order.
-     *
-     * param plainBlock64 the 64-bit block to process
-     * param roundKeys    the 16 round keys in the order they should be used
-     * return the processed 64-bit block
-     */
+    /* Handles cipher. */
     public String cipher(String plainBlock64, String[] roundKeys) {
+        // Creates a local value for this method.
         String inBlock = initialPermutation(plainBlock64);
 
+        // Creates a local value for this method.
         String leftBlock = BitUtil.leftHalf(inBlock);
+        // Creates a local value for this method.
         String rightBlock = BitUtil.rightHalf(inBlock);
 
+        // Loops through the needed values.
         for (int round = 0; round < 16; round++) {
             // First mix the current left side with f(right side, round key).
+            // Stores the value used by this method.
             leftBlock = mixer(leftBlock, rightBlock, roundKeys[round]);
 
             // DES swaps after rounds 1 through 15, but not after round 16.
+            // Checks the condition before continuing.
             if (round != 15) {
+                // Creates a local value for this method.
                 String[] swapped = swapper(leftBlock, rightBlock);
+                // Stores the value used by this method.
                 leftBlock = swapped[0];
+                // Stores the value used by this method.
                 rightBlock = swapped[1];
             }
         }
 
+        // Creates a local value for this method.
         String outBlock = leftBlock + rightBlock;
 
+        // Returns the result to the caller.
         return finalPermutation(outBlock);
     }
 
-    /**
-     * Decrypts one 64-bit binary block using round keys in reverse order.
-     *
-     * param cipherBlock64     the encrypted 64-bit block
-     * param reversedRoundKeys the round keys ordered from K16 down to K1
-     * return the decrypted 64-bit block
-     */
+    /* Handles decrypt. */
     public String decrypt(String cipherBlock64, String[] reversedRoundKeys) {
+        // Returns the result to the caller.
         return cipher(cipherBlock64, reversedRoundKeys);
     }
 
-    /**
-     * Encrypts one block written as 16 hexadecimal characters.
-     *
-     * This helper is useful for DES test vectors and small examples.
-     *
-     * param plainHex the plaintext block as 16 hex characters
-     * param keyHex   the DES key as 16 hex characters
-     * return the encrypted block as uppercase hexadecimal
-     */
+    /* Handles encryptBlock. */
     public String encryptBlock(String plainHex, String keyHex) {
+        // Creates a local value for this method.
         String plainBlock64 = BitUtil.hexToBinary(plainHex, 64);
 
+        // Creates a local value for this method.
         KeyUtil keyUtil = new KeyUtil();
+        // Creates a local value for this method.
         String[] roundKeys = keyUtil.generateRoundKeys(keyHex);
 
+        // Creates a local value for this method.
         String cipherBlock64 = cipher(plainBlock64, roundKeys);
 
+        // Returns the result to the caller.
         return BitUtil.binaryToHex(cipherBlock64);
     }
 
-    /**
-     * Decrypts one block written as 16 hexadecimal characters.
-     *
-     * param cipherHex the encrypted block as 16 hex characters
-     * param keyHex    the DES key as 16 hex characters
-     * return the decrypted block as uppercase hexadecimal
-     */
+    /* Handles decryptBlock. */
     public String decryptBlock(String cipherHex, String keyHex) {
+        // Creates a local value for this method.
         String cipherBlock64 = BitUtil.hexToBinary(cipherHex, 64);
 
+        // Creates a local value for this method.
         KeyUtil keyUtil = new KeyUtil();
+        // Creates a local value for this method.
         String[] reversedRoundKeys = keyUtil.generateReversedRoundKeys(keyHex);
 
+        // Creates a local value for this method.
         String plainBlock64 = decrypt(cipherBlock64, reversedRoundKeys);
 
+        // Returns the result to the caller.
         return BitUtil.binaryToHex(plainBlock64);
     }
 }
+

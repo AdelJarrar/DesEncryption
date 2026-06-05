@@ -2,217 +2,215 @@ package com.example.desencryption;
 
 import java.math.BigInteger;
 
-/**
- * Generic helper methods for binary-string operations used by DES.
- *
- * This class does not contain DES tables or cipher-round logic. It only
- * handles reusable bit manipulation such as permutation, XOR, conversion, and
- * splitting.
- */
 public final class BitUtil {
 
+    /* Handles BitUtil. */
     private BitUtil() {
+        // Stops callers from creating this utility class.
     }
 
-    /**
-     * Applies a 1-based permutation table to the input string.
-     *
-     *  input the source string to permute
-     *  table the 1-based positions to read from input
-     * return the permuted string
-     * throws IllegalArgumentException if input or table is null, or a table
-     *                                  position is outside the input bounds
-     */
+    /* Handles applyPermutation. */
     public static String applyPermutation(String input, int[] table) {
+        // Checks the condition before continuing.
         if (input == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Input must not be null.");
         }
+        // Checks the condition before continuing.
         if (table == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Permutation table must not be null.");
         }
 
+        // Creates a local value for this method.
         StringBuilder result = new StringBuilder(table.length);
 
+        // Loops through the needed values.
         for (int position : table) {
+            // Checks the condition before continuing.
             if (position < 1 || position > input.length()) {
+                // Throws an error for invalid input.
                 throw new IllegalArgumentException(
+                        // Runs this line of the method.
                         "Permutation position must be between 1 and input length."
                 );
             }
 
+            // Appends text to the builder.
             result.append(input.charAt(position - 1));
         }
 
+        // Returns the result to the caller.
         return result.toString();
     }
 
-    /**
-     * Computes bitwise XOR for two equal-length binary strings.
-     *
-     * param left  the first binary string
-     * param right the second binary string
-     * return the XOR result as a binary string
-     * throws IllegalArgumentException if either value is null, contains a
-     *                                  non-binary character, or lengths differ
-     */
+    /* Handles xor. */
     public static String xor(String left, String right) {
+        // Runs this line of the method.
         validateBinary(left, "Left value");
+        // Runs this line of the method.
         validateBinary(right, "Right value");
 
+        // Checks the condition before continuing.
         if (left.length() != right.length()) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Binary values must have the same length.");
         }
 
+        // Creates a local value for this method.
         StringBuilder result = new StringBuilder(left.length());
 
+        // Loops through the needed values.
         for (int i = 0; i < left.length(); i++) {
+            // Stores the value used by this method.
             result.append(left.charAt(i) == right.charAt(i) ? '0' : '1');
         }
 
+        // Returns the result to the caller.
         return result.toString();
     }
 
-    /**
-     * Converts a hexadecimal string into a fixed-length binary string.
-     *
-     * param hex          the hexadecimal value to convert
-     * param expectedBits the exact number of bits to return
-     * return the binary value padded with leading zeroes
-     * throws IllegalArgumentException if the value is null, not hexadecimal,
-     *                                  expectedBits is negative, or the value
-     *                                  does not fit in expectedBits
-     */
+    /* Handles hexToBinary. */
     public static String hexToBinary(String hex, int expectedBits) {
+        // Checks the condition before continuing.
         if (hex == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Hex value must not be null.");
         }
+        // Checks the condition before continuing.
         if (expectedBits < 0) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Expected bit length must not be negative.");
         }
+        // Checks the condition before continuing.
         if (!hex.matches("[0-9a-fA-F]+")) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Hex value must contain only hexadecimal characters.");
         }
 
+        // Creates a local value for this method.
         String binary = new BigInteger(hex, 16).toString(2);
 
+        // Checks the condition before continuing.
         if (binary.length() > expectedBits) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Hex value does not fit in the expected bit length.");
         }
 
+        // Returns the result to the caller.
         return String.format("%" + expectedBits + "s", binary).replace(' ', '0');
     }
 
-    /**
-     * Converts a binary string into uppercase hexadecimal.
-     *
-     * The output is padded to preserve complete 4-bit groups. For example,
-     * {code 00000001} becomes {@code 01}.
-     *
-     * param binary the binary value to convert
-     * return the uppercase hexadecimal value
-     * throws IllegalArgumentException if binary is null or contains a
-     *                                  non-binary character
-     */
+    /* Handles binaryToHex. */
     public static String binaryToHex(String binary) {
+        // Runs this line of the method.
         validateBinary(binary, "Binary value");
 
+        // Creates a local value for this method.
         int hexLength = (int) Math.ceil(binary.length() / 4.0);
+        // Creates a local value for this method.
         String hex = new BigInteger(binary, 2).toString(16).toUpperCase();
 
+        // Returns the result to the caller.
         return String.format("%" + hexLength + "s", hex).replace(' ', '0');
     }
 
-    /**
-     * Converts raw bytes into uppercase hexadecimal text.
-     *
-     * This is useful for showing encrypted text in the UI, because encrypted
-     * bytes may contain characters that cannot be displayed safely.
-     *
-     * param bytes the bytes to convert
-     * return the bytes as uppercase hexadecimal text
-     * throws IllegalArgumentException if bytes is null
-     */
+    /* Handles bytesToHex. */
     public static String bytesToHex(byte[] bytes) {
+        // Checks the condition before continuing.
         if (bytes == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Bytes must not be null.");
         }
 
+        // Creates a local value for this method.
         StringBuilder hex = new StringBuilder(bytes.length * 2);
+        // Loops through the needed values.
         for (byte value : bytes) {
+            // Appends text to the builder.
             hex.append(String.format("%02X", value & 0xFF));
         }
 
+        // Returns the result to the caller.
         return hex.toString();
     }
 
-    /**
-     * Converts hexadecimal text back into raw bytes.
-     *
-     * param hex the hexadecimal text to convert
-     * return the decoded bytes
-     * throws IllegalArgumentException if hex is null, has odd length, or
-     *                                  contains non-hexadecimal characters
-     */
+    /* Handles hexToBytes. */
     public static byte[] hexToBytes(String hex) {
+        // Checks the condition before continuing.
         if (hex == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Hex value must not be null.");
         }
+        // Checks the condition before continuing.
         if (hex.length() % 2 != 0) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Hex value must have an even number of characters.");
         }
+        // Checks the condition before continuing.
         if (!hex.matches("[0-9a-fA-F]*")) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Hex value must contain only hexadecimal characters.");
         }
 
+        // Creates a local value for this method.
         byte[] bytes = new byte[hex.length() / 2];
+        // Loops through the needed values.
         for (int i = 0; i < bytes.length; i++) {
+            // Creates a local value for this method.
             int start = i * 2;
+            // Creates a local value for this method.
             String hexByte = hex.substring(start, start + 2);
+            // Stores the value used by this method.
             bytes[i] = (byte) Integer.parseInt(hexByte, 16);
         }
 
+        // Returns the result to the caller.
         return bytes;
     }
 
-    /**
-     * Returns the first half of an even-length string.
-     *
-     * param input the value to split
-     * return the left half
-     * throws IllegalArgumentException if input is null or has odd length
-     */
+    /* Handles leftHalf. */
     public static String leftHalf(String input) {
+        // Runs this line of the method.
         validateEvenLength(input);
+        // Returns the result to the caller.
         return input.substring(0, input.length() / 2);
     }
 
-    /**
-     * Returns the second half of an even-length string.
-     *
-     * param input the value to split
-     * return the right half
-     * throws IllegalArgumentException if input is null or has odd length
-     */
+    /* Handles rightHalf. */
     public static String rightHalf(String input) {
+        // Runs this line of the method.
         validateEvenLength(input);
+        // Returns the result to the caller.
         return input.substring(input.length() / 2);
     }
 
+    /* Handles validateBinary. */
     private static void validateBinary(String value, String label) {
+        // Checks the condition before continuing.
         if (value == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException(label + " must not be null.");
         }
+        // Checks the condition before continuing.
         if (!value.matches("[01]+")) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException(label + " must contain only 0 and 1.");
         }
     }
 
+    /* Handles validateEvenLength. */
     private static void validateEvenLength(String input) {
+        // Checks the condition before continuing.
         if (input == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Input must not be null.");
         }
+        // Checks the condition before continuing.
         if (input.length() % 2 != 0) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Input length must be even.");
         }
     }
 }
+

@@ -7,137 +7,139 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
-/**
- * Handles choosing, reading, and writing files for the JavaFX UI.
- *
- * This class does not encrypt or decrypt data. It only lets the user choose
- * files with JavaFX dialogs and converts selected files to raw byte arrays that
- * can be passed to {link DesDataService}. Text files, images, audio, and video
- * are all read the same way: as bytes.
- */
 public class FileHnadler {
 
-    /**
-     * Opens a chooser for any file the application can encrypt or decrypt.
-     *
-     * param owner the window that owns the dialog
-     * return the selected file, or null if the user cancels
-     */
+    /* Handles chooseAnyFile. */
     public File chooseAnyFile(Window owner) {
+        // Creates a local value for this method.
         FileChooser fileChooser = new FileChooser();
+        // Sets a value on the object.
         fileChooser.setTitle("Choose File");
 
+        // Adds the value to the collection.
         fileChooser.getExtensionFilters().add(
+                // Runs this line of the method.
                 new FileChooser.ExtensionFilter(
+                        // Runs this line of the method.
                         "Supported Files",
-                        "*.txt", "*.docx", "*.des", "*.png", "*.jpg", "*.jpeg", "*.mp3", "*.wav", "*.mp4"
+                        // Runs this line of the method.
+                        "*.txt", "*.docx", "*.des", "*.png", "*.jpg", "*.jpeg", "*.mp3", "*.wav"
+                // Runs this line of the method.
                 )
         );
+        // Adds the value to the collection.
         fileChooser.getExtensionFilters().add(
+                // Runs this line of the method.
                 new FileChooser.ExtensionFilter("All Files", "*.*")
         );
 
+        // Returns the result to the caller.
         return fileChooser.showOpenDialog(owner);
     }
 
-    /**
-     * Opens a chooser for text files.
-     *
-     * param owner the window that owns the dialog
-     * return the selected file, or null if the user cancels
-     */
+    /* Handles chooseTextFile. */
     public File chooseTextFile(Window owner) {
+        // Creates a local value for this method.
         FileChooser fileChooser = new FileChooser();
+        // Sets a value on the object.
         fileChooser.setTitle("Choose Text File");
 
         // Filters make the dialog easier to use, but the file is still read as bytes.
+        // Adds the value to the collection.
         fileChooser.getExtensionFilters().add(
+                // Runs this line of the method.
                 new FileChooser.ExtensionFilter("Text Files", "*.txt")
         );
+        // Adds the value to the collection.
         fileChooser.getExtensionFilters().add(
+                // Runs this line of the method.
                 new FileChooser.ExtensionFilter("All Files", "*.*")
         );
+        // Returns the result to the caller.
         return fileChooser.showOpenDialog(owner);
     }
 
-    /**
-     * Opens a save dialog.
-     *
-     * param owner       the window that owns the dialog
-     * param defaultName suggested output filename
-     * return the selected output file, or null if the user cancels
-     */
+    /* Handles chooseSaveFile. */
     public File chooseSaveFile(Window owner, String defaultName) {
+        // Creates a local value for this method.
         FileChooser fileChooser = new FileChooser();
+        // Sets a value on the object.
         fileChooser.setTitle("Save Result");
 
+        // Checks the condition before continuing.
         if (defaultName != null && !defaultName.isBlank()) {
+            // Sets a value on the object.
             fileChooser.setInitialFileName(defaultName);
         }
 
+        // Returns the result to the caller.
         return fileChooser.showSaveDialog(owner);
     }
 
-    /**
-     * Reads a file as raw bytes.
-     *
-     * param file the file to read
-     * return the file contents
-     * throws IOException              if reading fails
-     * throws IllegalArgumentException if file is null
-     */
+    /* Handles readFileBytes. */
     public byte[] readFileBytes(File file) throws IOException {
+        // Checks the condition before continuing.
         if (file == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("File must not be null.");
         }
+        // Checks the condition before continuing.
         if (!isSupportedFile(file)) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Unsupported file type. Supported files are .txt, .docx, .des, .png, .jpg, .jpeg, .mp3, .wav, and .mp4.");
         }
 
         // Raw bytes work for every file type: text, images, audio, and video.
+        // Returns the result to the caller.
         return Files.readAllBytes(file.toPath());
     }
 
-    /**
-     * Writes raw bytes to a file.
-     *
-     * param file the file to write
-     * param data the bytes to write
-     * throws IOException              if writing fails
-     * throws IllegalArgumentException if file or data is null
-     */
+    /* Handles writeFileBytes. */
     public void writeFileBytes(File file, byte[] data) throws IOException {
+        // Checks the condition before continuing.
         if (file == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("File must not be null.");
         }
+        // Checks the condition before continuing.
         if (data == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Data must not be null.");
         }
 
         // Write the exact bytes produced by encryption/decryption.
+        // Runs this line of the method.
         Files.write(file.toPath(), data);
     }
 
-    /**
-     * Checks whether this project officially supports the selected file type.
-     *
-     * param file the file to check
-     * return true when the file extension is supported
-     */
+    /* Handles isSupportedFile. */
     public boolean isSupportedFile(File file) {
+        // Checks the condition before continuing.
         if (file == null) {
+            // Returns the result to the caller.
             return false;
         }
 
+        // Creates a local value for this method.
         String name = file.getName().toLowerCase();
+        // Returns the result to the caller.
         return name.endsWith(".txt")
+                // Runs this line of the method.
                 || name.endsWith(".docx")
+                // Runs this line of the method.
                 || name.endsWith(".des")
+                // Runs this line of the method.
                 || name.endsWith(".png")
+                // Runs this line of the method.
                 || name.endsWith(".jpg")
+                // Runs this line of the method.
                 || name.endsWith(".jpeg")
+                // Runs this line of the method.
                 || name.endsWith(".mp3")
+                // Runs this line of the method.
                 || name.endsWith(".wav")
+                // Runs this line of the method.
                 || name.endsWith(".mp4");
     }
 }
+

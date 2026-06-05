@@ -3,53 +3,19 @@ package com.example.desencryption;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 
-/**
- * Utility class responsible for generating DES round keys.
- *
- * DES uses a 64-bit key as input, but only 56 bits are actually used.
- * The remaining 8 bits are parity bits and are removed using PC-1.
- *
- * This class follows the DES key schedule process:
- *
- * 1. Convert the original hexadecimal key into a 64-bit binary string.
- * 2. Apply PC-1 to reduce the key from 64 bits to 56 bits.
- * 3. Split the 56-bit key into two 28-bit halves.
- * 4. Perform left circular shifts on both halves for each round.
- * 5. Apply PC-2 to generate sixteen 48-bit round keys.
- */
 public class KeyUtil {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    /**
-     * Stores the generated round keys.
-     *
-     * During keySchedule2(), this array temporarily stores the 56-bit shifted keys.
-     * After secondKeySchedule(), it stores the final 48-bit DES round keys.
-     */
     public String[] roundKeys = new String[16];
 
-    /**
-     * Stores the generated round keys in reverse order.
-     *
-     * DES decryption uses the same cipher process as encryption, but applies
-     * the sixteen round keys from K16 down to K1.
-     */
     public String[] reversedRoundKeys = new String[16];
 
-    /**
-     * First step of the DES key schedule.
-     *
-     * Converts the original 16-character hexadecimal key into a 64-bit binary string,
-     * then applies the PC-1 permutation table to produce a 56-bit key.
-     *
-     * param key the original DES key in hexadecimal format, exactly 16 hex characters
-     * return the 56-bit key after applying PC-1
-     * throws IllegalArgumentException if the key is null, not 16 characters long,
-     *                                  or contains non-hexadecimal characters
-     */
+    /* Handles KeySchedule1. */
     public String KeySchedule1(String key) {
+        // Checks the condition before continuing.
         if (key == null || key.length() != 16 || !key.matches("[0-9a-fA-F]+")) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("DES key must be exactly 16 hexadecimal characters.");
         }
 
@@ -58,9 +24,12 @@ public class KeyUtil {
          *
          * BigInteger removes leading zeroes, so we pad the result back to 64 bits.
          */
+        // Creates a local value for this method.
         String binary = new BigInteger(key, 16).toString(2);
+        // Stores the value used by this method.
         binary = String.format("%64s", binary).replace(' ', '0');
 
+        // Creates a local value for this method.
         StringBuilder pc1Key = new StringBuilder();
 
         /*
@@ -69,27 +38,23 @@ public class KeyUtil {
          * DES tables are 1-based, while Java strings are 0-based.
          * That is why we use pos - 1.
          */
+        // Loops through the needed values.
         for (int i = 0; i < PermutationTables.PC1.length; i++) {
+            // Creates a local value for this method.
             int pos = PermutationTables.PC1[i];
+            // Appends text to the builder.
             pc1Key.append(binary.charAt(pos - 1));
         }
 
+        // Returns the result to the caller.
         return pc1Key.toString();
     }
 
-    /**
-     * Second step of the DES key schedule.
-     *
-     * Splits the 56-bit PC-1 key into two 28-bit halves, then performs
-     * the required left circular shifts for each of the 16 rounds.
-     *
-     * The shifted 56-bit keys are temporarily stored in roundKeys.
-     *
-     * param pc1Key the 56-bit key produced after applying PC-1
-     * throws IllegalArgumentException if pc1Key is null or not exactly 56 bits
-     */
+    /* Handles keySchedule2. */
     public void keySchedule2(String pc1Key) {
+        // Checks the condition before continuing.
         if (pc1Key == null || pc1Key.length() != 56) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("PC-1 key must be exactly 56 bits.");
         }
 
@@ -99,15 +64,20 @@ public class KeyUtil {
          * left  = C0
          * right = D0
          */
+        // Creates a local value for this method.
         String left = pc1Key.substring(0, 28);
+        // Creates a local value for this method.
         String right = pc1Key.substring(28, 56);
 
         /*
          * Generate C1,D1 through C16,D16 by shifting both halves.
          */
+        // Loops through the needed values.
         for (int i = 0; i < 16; i++) {
+            // Creates a local value for this method.
             int shift = PermutationTables.ROUND_SHIFTS[i];
 
+            // Checks the condition before continuing.
             if (shift == 1) {
                 /*
                  * Left circular shift by 1 bit.
@@ -115,8 +85,11 @@ public class KeyUtil {
                  * Example:
                  * 10110 -> 01101
                  */
+                // Stores the value used by this method.
                 left = left.substring(1) + left.charAt(0);
+                // Stores the value used by this method.
                 right = right.substring(1) + right.charAt(0);
+            // Runs this line of the method.
             } else {
                 /*
                  * Left circular shift by 2 bits.
@@ -124,7 +97,9 @@ public class KeyUtil {
                  * Example:
                  * 10110 -> 11010
                  */
+                // Stores the value used by this method.
                 left = left.substring(2) + left.charAt(0) + left.charAt(1);
+                // Stores the value used by this method.
                 right = right.substring(2) + right.charAt(0) + right.charAt(1);
             }
 
@@ -134,37 +109,37 @@ public class KeyUtil {
              * At this stage, this is not yet the final round key.
              * PC-2 still needs to be applied.
              */
+            // Creates a local value for this method.
             String concatedKey = left + right;
 
             /*
              * Temporarily store the shifted 56-bit key for this round.
              */
+            // Stores the value used by this method.
             roundKeys[i] = concatedKey;
         }
     }
 
-    /**
-     * Final step of the DES key schedule.
-     *
-     * Applies PC-2 to each shifted 56-bit key to produce the final
-     * sixteen 48-bit DES round keys.
-     *
-     * param keys the sixteen shifted 56-bit keys generated by keySchedule2()
-     * throws IllegalArgumentException if keys is null, does not contain 16 keys,
-     *                                  or any key is not exactly 56 bits
-     */
+    /* Handles secondKeySchedule. */
     public void secondKeySchedule(String[] keys) {
+        // Checks the condition before continuing.
         if (keys == null || keys.length != 16) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("You must pass exactly 16 shifted keys.");
         }
 
+        // Loops through the needed values.
         for (int i = 0; i < 16; i++) {
+            // Checks the condition before continuing.
             if (keys[i] == null || keys[i].length() != 56) {
+                // Throws an error for invalid input.
                 throw new IllegalArgumentException(
+                        // Runs this line of the method.
                         "Shifted key at round " + (i + 1) + " must be exactly 56 bits."
                 );
             }
 
+            // Creates a local value for this method.
             StringBuilder newKey = new StringBuilder();
 
             /*
@@ -172,8 +147,11 @@ public class KeyUtil {
              *
              * This compresses the 56-bit shifted key into a 48-bit round key.
              */
+            // Loops through the needed values.
             for (int j = 0; j < PermutationTables.PC2.length; j++) {
+                // Creates a local value for this method.
                 int pos = PermutationTables.PC2[j];
+                // Appends text to the builder.
                 newKey.append(keys[i].charAt(pos - 1));
             }
 
@@ -182,61 +160,50 @@ public class KeyUtil {
              * the final 48-bit round key, and store the same key in reverse
              * order for decryption.
              */
+            // Creates a local value for this method.
             String finalRoundKey = newKey.toString();
+            // Stores the value used by this method.
             roundKeys[i] = finalRoundKey;
+            // Stores the value used by this method.
             reversedRoundKeys[15 - i] = finalRoundKey;
         }
     }
 
-    /**
-     * Generates all sixteen DES round keys from the original hexadecimal key.
-     *
-     * This method runs the full key schedule process:
-     *
-     * 1. Apply PC-1.
-     * 2. Split and shift the key halves.
-     * 3. Apply PC-2.
-     *
-     * param key the original DES key in hexadecimal format
-     * return an array containing sixteen 48-bit round keys
-     */
+    /* Handles generateRoundKeys. */
     public String[] generateRoundKeys(String key) {
+        // Creates a local value for this method.
         String pc1Key = KeySchedule1(key);
+        // Runs this line of the method.
         keySchedule2(pc1Key);
+        // Runs this line of the method.
         secondKeySchedule(roundKeys);
 
+        // Returns the result to the caller.
         return roundKeys;
     }
 
-    /**
-     * Generates all sixteen DES round keys in reverse order.
-     *
-     * This method runs the same key schedule as generateRoundKeys(), but
-     * returns the keys ordered from K16 down to K1 for decryption.
-     *
-     * param key the original DES key in hexadecimal format
-     * return an array containing sixteen 48-bit round keys in reverse order
-     */
+    /* Handles generateReversedRoundKeys. */
     public String[] generateReversedRoundKeys(String key) {
+        // Creates a local value for this method.
         String pc1Key = KeySchedule1(key);
+        // Runs this line of the method.
         keySchedule2(pc1Key);
+        // Runs this line of the method.
         secondKeySchedule(roundKeys);
 
+        // Returns the result to the caller.
         return reversedRoundKeys;
     }
 
-    /**
-     * Generates a random DES key in the format expected by the application.
-     *
-     * The returned key is 16 hexadecimal characters, which represents the
-     * 64-bit DES key input. DES later removes the parity bits using PC-1.
-     *
-     * return a random 16-character uppercase hexadecimal DES key
-     */
+    /* Handles generateRandomDesKey. */
     public static String generateRandomDesKey() {
+        // Creates a local value for this method.
         byte[] keyBytes = new byte[8];
+        // Runs this line of the method.
         RANDOM.nextBytes(keyBytes);
+        // Returns the result to the caller.
         return BitUtil.bytesToHex(keyBytes);
     }
 
 }
+

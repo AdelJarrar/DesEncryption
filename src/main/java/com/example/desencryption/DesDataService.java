@@ -1,113 +1,123 @@
 package com.example.desencryption;
 
-/**
- * Encrypts and decrypts raw byte arrays using DES.
- *
- * This class is the multi-block layer above {link DesCipher}. It does not
- * read files, open dialogs, or interact with the UI. It accepts raw bytes,
- * applies PKCS5 padding before encryption, processes the data in 8-byte DES
- * blocks, and removes PKCS5 padding after decryption.
- */
 public class DesDataService {
 
     private static final int BLOCK_SIZE = 8;
 
     private final DesCipher desCipher = new DesCipher();
 
-    /**
-     * Encrypts any byte array by padding it and processing each 8-byte block.
-     *
-     * param input  the raw bytes to encrypt
-     * param keyHex the DES key as exactly 16 hexadecimal characters
-     * return encrypted bytes whose length is a multiple of 8
-     * throws IllegalArgumentException if input is null or keyHex is invalid
-     */
+    /* Handles encryptBytes. */
     public byte[] encryptBytes(byte[] input, String keyHex) {
+        // Checks the condition before continuing.
         if (input == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Input must not be null.");
         }
 
         // Pad once before splitting so every DES block has exactly 8 bytes.
+        // Creates a local value for this method.
         byte[] paddedInput = PaddingUtil.addPkcs5Padding(input);
 
         // Generate the 16 encryption round keys once and reuse them for every block.
+        // Creates a local value for this method.
         KeyUtil keyUtil = new KeyUtil();
+        // Creates a local value for this method.
         String[] roundKeys = keyUtil.generateRoundKeys(keyHex);
 
+        // Creates a local value for this method.
         byte[] encryptedOutput = new byte[paddedInput.length];
 
         // Walk through the padded input 8 bytes at a time.
+        // Loops through the needed values.
         for (int blockStart = 0; blockStart < paddedInput.length; blockStart += BLOCK_SIZE) {
+            // Creates a local value for this method.
             byte[] currentBlock = new byte[BLOCK_SIZE];
 
+            // Loops through the needed values.
             for (int i = 0; i < BLOCK_SIZE; i++) {
+                // Stores the value used by this method.
                 currentBlock[i] = paddedInput[blockStart + i];
             }
 
             // Convert the byte block to the binary-string form used by DesCipher.
+            // Creates a local value for this method.
             String binaryBlock = BlockUtil.bytesToBinaryBlock(currentBlock);
 
             // Encrypt one DES block.
+            // Creates a local value for this method.
             String encryptedBinaryBlock = desCipher.cipher(binaryBlock, roundKeys);
 
             // Convert encrypted bits back to bytes for storage/output.
+            // Creates a local value for this method.
             byte[] encryptedBlock = BlockUtil.binaryBlockToBytes(encryptedBinaryBlock);
 
+            // Loops through the needed values.
             for (int i = 0; i < BLOCK_SIZE; i++) {
+                // Stores the value used by this method.
                 encryptedOutput[blockStart + i] = encryptedBlock[i];
             }
         }
 
+        // Returns the result to the caller.
         return encryptedOutput;
     }
 
-    /**
-     * Decrypts bytes produced by encryptBytes().
-     *
-     * param encryptedInput encrypted bytes; length must be a non-empty multiple of 8
-     * param keyHex         the DES key as exactly 16 hexadecimal characters
-     * return the original unpadded bytes
-     * throws IllegalArgumentException if encryptedInput is null, empty, not a
-     *                                  multiple of 8, has invalid padding, or
-     *                                  keyHex is invalid
-     */
+    /* Handles decryptBytes. */
     public byte[] decryptBytes(byte[] encryptedInput, String keyHex) {
+        // Checks the condition before continuing.
         if (encryptedInput == null) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Encrypted input must not be null.");
         }
+        // Checks the condition before continuing.
         if (encryptedInput.length == 0 || encryptedInput.length % BLOCK_SIZE != 0) {
+            // Throws an error for invalid input.
             throw new IllegalArgumentException("Encrypted input length must be a non-empty multiple of 8.");
         }
 
         // Generate reversed keys once because DES decryption uses K16 down to K1.
+        // Creates a local value for this method.
         KeyUtil keyUtil = new KeyUtil();
+        // Creates a local value for this method.
         String[] reversedRoundKeys = keyUtil.generateReversedRoundKeys(keyHex);
 
+        // Creates a local value for this method.
         byte[] decryptedWithPadding = new byte[encryptedInput.length];
 
         // Decrypt every 8-byte block independently, then remove padding at the end.
+        // Loops through the needed values.
         for (int blockStart = 0; blockStart < encryptedInput.length; blockStart += BLOCK_SIZE) {
+            // Creates a local value for this method.
             byte[] currentBlock = new byte[BLOCK_SIZE];
 
+            // Loops through the needed values.
             for (int i = 0; i < BLOCK_SIZE; i++) {
+                // Stores the value used by this method.
                 currentBlock[i] = encryptedInput[blockStart + i];
             }
 
             // Convert encrypted bytes into the binary-string form used by DesCipher.
+            // Creates a local value for this method.
             String binaryBlock = BlockUtil.bytesToBinaryBlock(currentBlock);
 
             // Decrypt one DES block using reversed round keys.
+            // Creates a local value for this method.
             String decryptedBinaryBlock = desCipher.decrypt(binaryBlock, reversedRoundKeys);
 
             // Convert decrypted bits back to bytes.
+            // Creates a local value for this method.
             byte[] decryptedBlock = BlockUtil.binaryBlockToBytes(decryptedBinaryBlock);
 
+            // Loops through the needed values.
             for (int i = 0; i < BLOCK_SIZE; i++) {
+                // Stores the value used by this method.
                 decryptedWithPadding[blockStart + i] = decryptedBlock[i];
             }
         }
 
         // Padding exists only at the end of the full decrypted data.
+        // Returns the result to the caller.
         return PaddingUtil.removePkcs5Padding(decryptedWithPadding);
     }
 }
+

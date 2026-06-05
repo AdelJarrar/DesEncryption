@@ -15,13 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * Main JavaFX screen for the DES application.
- *
- * This class is responsible for user interaction only: selecting files,
- * reading key/text input, calling the DES services, and showing status
- * messages. The actual encryption logic stays in {link DesDataService}.
- */
 public class MainUI  extends BorderPane {
 
     private static final Path GENERATED_KEY_FILE = Path.of("generated_des_key.txt");
@@ -37,37 +30,17 @@ public class MainUI  extends BorderPane {
     private TextField emailField;
     private TextArea resultArea;
 
-    /*
-     * These fields remember the file the user loaded most recently.
-     * Encrypt and Decrypt can then use the already-read bytes instead of asking
-     * the user to choose the same file again.
-     */
     private File selectedFile;
     private byte[] selectedFileBytes;
 
-    /*
-     * These fields remember the latest encrypted or decrypted result.
-     * The Save Result button uses them if the user wants to save the output
-     * again after canceling or choosing another location.
-     */
     private byte[] lastOutputBytes;
     private String lastOutputSuggestedName;
 
-    /*
-     * Email should send encrypted output only, not decrypted plaintext.
-     * These fields remember the latest encryption result separately.
-     */
     private byte[] lastEncryptedBytes;
     private String lastEncryptedTextHex;
     private String lastEncryptedSuggestedName;
     private boolean lastEncryptedOutputIsText;
 
-    /**
-     * Builds the whole UI screen in Java code.
-     *
-     * The constructor creates labels, text fields, buttons, and the result
-     * area, then connects each button to the method that performs its action.
-     */
     public MainUI() {
         Label titleLabel = new Label("Des Encryption");
         titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
@@ -117,13 +90,11 @@ public class MainUI  extends BorderPane {
         sendCiphertextEmailButton.setOnAction(event -> sendCiphertextEmail());
         saveResultButton.setOnAction(event -> saveLastOutput());
 
-        // File actions are grouped together because they work with loaded files.
         HBox fileActionButtons = new HBox(10);
         fileActionButtons.getChildren().addAll(
                 loadFileButton, encryptButton, decryptButton, saveResultButton
         );
 
-        // Text/key actions are grouped together because they work with typed text or the key field.
         HBox keyAndTextButtons = new HBox(10);
         keyAndTextButtons.getChildren().addAll(
                 decryptTextButton, loadKeyButton, showKeyExpansionButton, generateKeyButton, sendKeySmsButton
@@ -153,10 +124,6 @@ public class MainUI  extends BorderPane {
         setCenter(vBox);
     }
 
-    /**
-     * Lets the user choose any file, stores its bytes, and prepares it for
-     * either encryption or decryption.
-     */
     private void loadAnyFile() {
         File file = fileHnadler.chooseAnyFile(getSceneWindow());
         if (file == null) {
@@ -195,12 +162,6 @@ public class MainUI  extends BorderPane {
         }
     }
 
-    /**
-     * Loads a DES key from a small text file.
-     *
-     * The file should contain one key such as 133457799BBCDFF1. Whitespace
-     * before or after the key is ignored.
-     */
     private void loadKeyFile() {
         File file = fileHnadler.chooseTextFile(getSceneWindow());
         if (file == null) {
@@ -217,9 +178,6 @@ public class MainUI  extends BorderPane {
         }
     }
 
-    /**
-     * Encrypts the currently selected file bytes, or typed text if no file is selected.
-     */
     private void encryptCurrentInput() {
         try {
             String keyHex = getValidatedKey();
@@ -269,12 +227,6 @@ public class MainUI  extends BorderPane {
         }
     }
 
-    /**
-     * Decrypts short text that was encrypted and shown as hexadecimal.
-     *
-     * The input field should contain the hexadecimal ciphertext produced by
-     * encrypting typed text with the Encrypt button.
-     */
     private void decryptTextFromInputField() {
         try {
             String keyHex = getValidatedKey();
@@ -301,9 +253,6 @@ public class MainUI  extends BorderPane {
         }
     }
 
-    /**
-     * Decrypts the currently loaded file and asks where to save the result.
-     */
     private void decryptLoadedFile() {
         if (!shouldEncryptSelectedFile()) {
             resultArea.setText("Load an encrypted file first, then click Decrypt.");
@@ -341,12 +290,6 @@ public class MainUI  extends BorderPane {
         }
     }
 
-    /**
-     * Shows the 16 DES round keys generated from the current key.
-     *
-     * Each key is displayed in binary and hexadecimal, matching the key
-     * expansion requirement from the project description.
-     */
     private void showKeyExpansion() {
         try {
             String keyHex = getValidatedKey();
@@ -372,10 +315,6 @@ public class MainUI  extends BorderPane {
         }
     }
 
-    /**
-     * Generates a valid random DES key, puts it in the key field, and saves it
-     * to generated_des_key.txt in the project folder.
-     */
     private void generateRandomKey() {
         String key = KeyUtil.generateRandomDesKey();
         keyField.setText(key);
@@ -407,65 +346,91 @@ public class MainUI  extends BorderPane {
         }
     }
 
-    /**
-     * Sends the current DES key to the phone number typed in the phone field.
-     */
+    /* Handles sendKeySms. */
     private void sendKeySms() {
+        // Starts code that may fail.
         try {
+            // Creates a local value for this method.
             String keyHex = getValidatedKey();
+            // Creates a local value for this method.
             String recipientPhoneNumber = phoneField.getText().trim();
 
+            // Creates a local value for this method.
             String messageSid = smsService.sendKeySms(recipientPhoneNumber, keyHex);
 
+            // Sets a value on the object.
             resultArea.setText(
+                    // Runs this line of the method.
                     "DES key sent by SMS."
+                            // Runs this line of the method.
                             + System.lineSeparator()
+                            // Runs this line of the method.
                             + "Recipient: " + recipientPhoneNumber
+                            // Runs this line of the method.
                             + System.lineSeparator()
+                            // Runs this line of the method.
                             + "Message SID: " + messageSid
             );
+        // Runs this line of the method.
         } catch (IllegalArgumentException ex) {
+            // Runs this line of the method.
             showError("SMS failed", ex);
+        // Runs this line of the method.
         } catch (RuntimeException ex) {
+            // Runs this line of the method.
             showError("Twilio rejected the SMS request", ex);
         }
     }
 
-    /**
-     * Sends the latest encrypted text or encrypted file by email.
-     */
+    /* Handles sendCiphertextEmail. */
     private void sendCiphertextEmail() {
+        // Starts code that may fail.
         try {
+            // Creates a local value for this method.
             String recipientEmail = emailField.getText().trim();
 
+            // Checks the condition before continuing.
             if (lastEncryptedBytes == null) {
+                // Throws an error for invalid input.
                 throw new IllegalArgumentException("Encrypt text or a file first, then send the email.");
             }
 
+            // Checks the condition before continuing.
             if (lastEncryptedOutputIsText) {
+                // Runs this line of the method.
                 emailService.sendCipherTextEmail(
+                        // Runs this line of the method.
                         recipientEmail,
+                        // Runs this line of the method.
                         "DES encrypted text",
+                        // Runs this line of the method.
                         lastEncryptedTextHex
                 );
+                // Sets a value on the object.
                 resultArea.setText("Encrypted text ciphertext sent to: " + recipientEmail);
+            // Runs this line of the method.
             } else {
+                // Runs this line of the method.
                 emailService.sendEncryptedFileEmail(
+                        // Runs this line of the method.
                         recipientEmail,
+                        // Runs this line of the method.
                         "DES encrypted file",
+                        // Runs this line of the method.
                         lastEncryptedBytes,
+                        // Runs this line of the method.
                         lastEncryptedSuggestedName
                 );
+                // Sets a value on the object.
                 resultArea.setText("Encrypted file sent to: " + recipientEmail);
             }
+        // Runs this line of the method.
         } catch (IllegalArgumentException ex) {
+            // Runs this line of the method.
             showError("Email failed", ex);
         }
     }
 
-    /**
-     * Saves the most recent encrypted or decrypted bytes again.
-     */
     private void saveLastOutput() {
         if (lastOutputBytes == null) {
             resultArea.setText("There is no encrypted or decrypted result to save yet.");
@@ -485,12 +450,6 @@ public class MainUI  extends BorderPane {
         }
     }
 
-    /**
-     * Chooses what Encrypt should process.
-     *
-     * If a file was loaded, encryption uses the file bytes. Otherwise, it
-     * uses the text typed directly in the input field.
-     */
     private byte[] getBytesToEncrypt() {
         if (shouldEncryptSelectedFile()) {
             return selectedFileBytes;
@@ -504,10 +463,6 @@ public class MainUI  extends BorderPane {
         return text.getBytes(StandardCharsets.UTF_8);
     }
 
-    /**
-     * A selected file is used only while its path is still shown in the input field.
-     * If the user replaces the path with typed text, Encrypt uses that text instead.
-     */
     private boolean shouldEncryptSelectedFile() {
         return selectedFile != null
                 && selectedFileBytes != null
@@ -536,13 +491,6 @@ public class MainUI  extends BorderPane {
         lastEncryptedOutputIsText = false;
     }
 
-    /**
-     * Suggests a filename for decrypted file output.
-     *
-     * If the encrypted file is named {@code photo.jpg.des}, removing
-     * {code .des} suggests {code photo.jpg}, which restores the original
-     * extension for normal project use.
-     */
     private String getRestoredDefaultName(File encryptedFile) {
         String name = encryptedFile.getName();
         if (name.toLowerCase().endsWith(".des")) {
@@ -556,19 +504,10 @@ public class MainUI  extends BorderPane {
         return "restored_" + name;
     }
 
-    /**
-     * Checks whether a loaded file can be safely previewed as text.
-     */
     private boolean isTextFile(File file) {
         return file.getName().toLowerCase().endsWith(".txt");
     }
 
-    /**
-     * Reads and validates the key from the key field.
-     *
-     * DES keys are entered as 16 hexadecimal characters, which represent
-     * the original 64-bit DES key before PC-1 removes parity bits.
-     */
     private String getValidatedKey() {
         String keyHex = keyField.getText().trim();
         if (keyHex.isEmpty()) {
@@ -581,9 +520,6 @@ public class MainUI  extends BorderPane {
         return keyHex.toUpperCase();
     }
 
-    /**
-     * Returns the JavaFX window that owns file chooser dialogs.
-     */
     private javafx.stage.Window getSceneWindow() {
         if (getScene() == null) {
             return null;
@@ -592,9 +528,6 @@ public class MainUI  extends BorderPane {
         return getScene().getWindow();
     }
 
-    /**
-     * Shows an error message in the result area instead of printing to console.
-     */
     private void showError(String prefix, Exception ex) {
         resultArea.setText(prefix + ": " + ex.getMessage());
     }
