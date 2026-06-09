@@ -137,9 +137,7 @@ public class FileHnadler {
                 // Runs this line of the method.
                 || name.endsWith(".mp3")
                 // Runs this line of the method.
-                || name.endsWith(".wav")
-                // Runs this line of the method.
-                || name.endsWith(".mp4");
+                || name.endsWith(".wav");
     }
 }
 
