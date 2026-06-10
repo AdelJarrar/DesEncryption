@@ -134,31 +134,9 @@ public class MainUI  extends BorderPane {
             selectedFile = file;
             selectedFileBytes = fileHnadler.readFileBytes(file);
             textField.setText(file.getAbsolutePath());
-
-            if (isTextFile(file)) {
-                resultArea.setText(
-                        "Loaded text file: " + file.getAbsolutePath()
-                                + System.lineSeparator()
-                                + "Size: " + selectedFileBytes.length + " bytes"
-                                + System.lineSeparator()
-                                + "Click Encrypt to encrypt it, or Decrypt if this file is encrypted data."
-                                + System.lineSeparator()
-                                + System.lineSeparator()
-                                + new String(selectedFileBytes, StandardCharsets.UTF_8)
-                );
-            } else {
-                resultArea.setText(
-                        "Loaded file: " + file.getAbsolutePath()
-                                + System.lineSeparator()
-                                + "Size: " + selectedFileBytes.length + " bytes"
-                                + System.lineSeparator()
-                                + "Click Encrypt to encrypt it, or Decrypt if this file is encrypted data."
-                                + System.lineSeparator()
-                                + "Binary file contents are not displayed here."
-                );
-            }
+            resultArea.setText("File loaded successfully.");
         } catch (IOException | IllegalArgumentException ex) {
-            showError("Could not load file", ex);
+            resultArea.setText("Failed to load file.");
         }
     }
 
@@ -502,10 +480,6 @@ public class MainUI  extends BorderPane {
         }
 
         return "restored_" + name;
-    }
-
-    private boolean isTextFile(File file) {
-        return file.getName().toLowerCase().endsWith(".txt");
     }
 
     private String getValidatedKey() {
